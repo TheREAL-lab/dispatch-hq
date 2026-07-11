@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1B2733">
+<title>Dispatch HQ — North DFW Gate &amp; Access Coordination</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --steel:#1B2733; --steel-2:#2C3A47; --paper:#EEF1F4; --card:#FFFFFF;
+    --hivis:#FF6B1A; --hivis-dk:#D9530A; --line:#C9D1D9; --ink:#1B2733;
+    --mut:#5A6B7A; --ok:#1F7A4D; --warn:#B7791F; --hot:#C0392B; --blue:#33566B;
+    --r:10px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{font-family:'Barlow',system-ui,sans-serif; background:var(--paper); color:var(--ink); font-size:16px;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  h1,h2,h3,.disp{font-family:'Barlow Semi Condensed',sans-serif; text-transform:uppercase; letter-spacing:.03em;}
+
+  header{
+    background:linear-gradient(180deg,var(--steel) 0%,var(--steel-2) 100%);
+    color:#fff; padding:14px 16px 12px; position:sticky; top:0; z-index:20;
+    border-bottom:4px solid var(--hivis);
+  }
+  header h1{font-size:20px; font-weight:800;}
+  header .sub{font-size:12px; color:#9FB0BF; letter-spacing:.08em; text-transform:uppercase;}
+  .daybar{display:flex; gap:14px; margin-top:10px;}
+  .daybar .stat{flex:1; text-align:center;}
+  .daybar .n{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:18px; color:var(--hivis);}
+  .daybar .l{font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#9FB0BF;}
+
+  main{padding:14px 14px 84px; max-width:680px; margin:0 auto;}
+
+  .panel{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:18px; margin-top:16px;}
+  .panel h2{font-size:18px; margin-bottom:4px;}
+  .panel p{color:var(--mut); font-size:14px; margin-bottom:14px;}
+  label{display:block; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--mut); margin:12px 0 4px;}
+  input,select,textarea{
+    width:100%; padding:12px; border:1.5px solid var(--line); border-radius:8px;
+    font:inherit; background:#fff; min-height:44px;
+  }
+  input:focus,select:focus,textarea:focus,button:focus-visible{outline:3px solid rgba(255,107,26,.45); outline-offset:1px;}
+  button{
+    font-family:'Barlow Semi Condensed',sans-serif; text-transform:uppercase; letter-spacing:.05em;
+    font-weight:700; font-size:15px; border:none; border-radius:8px; padding:13px 16px;
+    min-height:46px; cursor:pointer;
+  }
+  .btn-main{background:var(--hivis); color:#fff; width:100%; margin-top:16px;}
+  .btn-main:active{background:var(--hivis-dk);}
+  .btn-ghost{background:transparent; color:var(--blue); width:100%; margin-top:8px; border:1.5px solid var(--line);}
+  .btn-sm{padding:8px 12px; min-height:38px; font-size:13px;}
+  .linklike{background:none; border:none; color:var(--hivis-dk); font-family:'Barlow',sans-serif; font-size:14px;
+    text-transform:none; letter-spacing:0; font-weight:600; padding:10px 0 0; min-height:0; width:auto;}
+  .msg{margin-top:12px; font-size:14px; padding:10px 12px; border-radius:8px; display:none;}
+  .msg.err{display:block; background:#FBE9E7; color:var(--hot); border:1px solid #E7B4AD;}
+  .msg.ok{display:block; background:#E5F3EC; color:var(--ok); border:1px solid #B5D9C6;}
+
+  nav{
+    position:fixed; bottom:0; left:0; right:0; z-index:30;
+    background:var(--steel); display:flex; border-top:3px solid var(--hivis);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav button{
+    flex:1; background:none; color:#8FA2B2; border-radius:0; font-size:13px; padding:12px 4px;
+  }
+  nav button.on{color:#fff; background:var(--steel-2); box-shadow:inset 0 3px 0 var(--hivis);}
+
+  .toolrow{display:flex; gap:8px; margin-bottom:12px;}
+  .toolrow input{flex:1;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:14px; margin-bottom:10px;}
+  .rowtop{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  .fname{font-family:'Barlow Semi Condensed',sans-serif; font-weight:700; font-size:17px; line-height:1.15;}
+  .fcity{color:var(--mut); font-size:13px; margin-top:1px;}
+  .chip{font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em;
+    padding:4px 8px; border-radius:4px; white-space:nowrap;}
+  .chip.HOT{background:#FBE9E7; color:var(--hot); border:1px solid #E7B4AD;}
+  .chip.WARM{background:#FCF3E3; color:var(--warn); border:1px solid #E8D5AC;}
+  .chip.STANDARD{background:#E9EEF2; color:var(--blue); border:1px solid var(--line);}
+  .chip.STRATEGIC{background:#E8E4F5; color:#5B4B9E; border:1px solid #C9C0E8;}
+  .fnote{font-size:14px; color:#33424F; margin:8px 0;}
+  .frow{display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;}
+  a.tel{
+    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:15px; color:#fff;
+    background:var(--blue); text-decoration:none; padding:10px 14px; border-radius:8px; min-height:44px;
+    display:inline-flex; align-items:center;
+  }
+  .frow select{flex:1; min-width:150px;}
+  details.logbox{margin-top:10px;}
+  details.logbox summary{
+    font-family:'Barlow Semi Condensed',sans-serif; font-weight:700; font-size:13px; text-transform:uppercase;
+    letter-spacing:.05em; color:var(--hivis-dk); cursor:pointer; padding:6px 0;
+  }
+  .contact{font-size:13px; color:var(--mut); margin-top:2px;}
+  .laststatus{font-size:12px; color:var(--ok); font-weight:600; margin-top:6px;}
+
+  .wo{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+    margin-bottom:12px; display:flex; overflow:hidden;
+  }
+  .wo .perf{
+    width:16px; flex:none; background:var(--steel);
+    background-image:radial-gradient(circle at 8px 10px, var(--paper) 3.2px, transparent 3.6px);
+    background-size:16px 20px; background-repeat:repeat-y;
+  }
+  .wo .body{flex:1; padding:12px 14px;}
+  .wo .woid{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--mut); letter-spacing:.06em;}
+  .stamp{
+    font-family:'Barlow Semi Condensed',sans-serif; font-weight:800; font-size:11px; letter-spacing:.12em;
+    text-transform:uppercase; border:2px solid; border-radius:4px; padding:3px 8px; display:inline-block;
+    transform:rotate(-2deg);
+  }
+  .st-requested{color:var(--warn); border-color:var(--warn);}
+  .st-dispatched{color:var(--blue); border-color:var(--blue);}
+  .st-on_site{color:#7A5AC0; border-color:#7A5AC0;}
+  .st-completed{color:var(--ok); border-color:var(--ok);}
+  .st-approved{color:#fff; border-color:var(--ok); background:var(--ok);}
+  .st-cancelled{color:var(--mut); border-color:var(--mut);}
+  .wo .issue{font-size:15px; font-weight:500; margin:6px 0 2px;}
+  .wo .meta{font-size:13px; color:var(--mut);}
+  .wo .fees{font-family:'IBM Plex Mono',monospace; font-size:13px; margin-top:6px;}
+  .advance{margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;}
+  .advance button{background:var(--steel); color:#fff;}
+  .advance .cancelbtn{background:transparent; color:var(--hot); border:1.5px solid #E7B4AD;}
+  .completeform{margin-top:10px; border-top:1px dashed var(--line); padding-top:10px;}
+  .togglerow{display:flex; gap:8px; margin-top:8px;}
+  .togglerow button{flex:1; background:#E9EEF2; color:var(--blue);}
+  .togglerow button.sel{background:var(--ok); color:#fff;}
+  .togglerow button.selno{background:var(--hot); color:#fff;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .kpi{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:14px; text-align:center;}
+  .kpi .n{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:26px;}
+  .kpi .l{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--mut); margin-top:2px;}
+  .killbar{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:14px; margin:10px 0;}
+  .killbar .track{height:14px; background:#E2E8ED; border-radius:7px; overflow:hidden; margin-top:8px;}
+  .killbar .fill{height:100%; background:var(--hivis); transition:width .4s ease;}
+  .techline{display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px dashed var(--line); font-size:14px;}
+  .techline:last-child{border-bottom:none;}
+  .empty{color:var(--mut); font-size:14px; text-align:center; padding:26px 10px;}
+  .sectionh{font-size:15px; margin:18px 0 8px; color:var(--steel);}
+  .hidden{display:none;}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Dispatch HQ</h1>
+  <div class="sub">North DFW · Gate / Keypad / Camera / Access Coordination</div>
+  <div class="daybar" id="daybar">
+    <div class="stat"><div class="n" id="hCalls">–</div><div class="l">Calls logged</div></div>
+    <div class="stat"><div class="n" id="hVOF">–</div><div class="l">Vendor on file</div></div>
+    <div class="stat"><div class="n" id="hDisp">–</div><div class="l">Dispatches</div></div>
+    <div class="stat"><div class="n" id="hFees">–</div><div class="l">Fees ($)</div></div>
+  </div>
+</header>
+
+<main>
+  <!-- AUTH -->
+  <section id="viewAuth">
+    <div class="panel" id="signinPanel">
+      <h2>Sign in</h2>
+      <p>Your ops tool. Data saves straight to the REAL WORK PROJECT database.</p>
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="username" inputmode="email">
+      <label for="pw">Password</label>
+      <input id="pw" type="password" autocomplete="current-password">
+      <button class="btn-main" id="btnSignIn">Sign in</button>
+      <button class="btn-ghost" id="btnSignUp">First time? Create account</button>
+      <button class="linklike" id="btnForgot">Forgot password?</button>
+      <div class="msg" id="authMsg"></div>
+    </div>
+
+    <div class="panel hidden" id="forgotPanel">
+      <h2>Reset password</h2>
+      <p>Enter your account email — you'll get a reset link. Open it on this phone.</p>
+      <label for="fEmail">Email</label>
+      <input id="fEmail" type="email" inputmode="email" autocomplete="username">
+      <button class="btn-main" id="btnSendReset">Send reset link</button>
+      <button class="linklike" id="btnBackToSignin">← Back to sign in</button>
+      <div class="msg" id="forgotMsg"></div>
+    </div>
+
+    <div class="panel hidden" id="resetPanel">
+      <h2>Set new password</h2>
+      <p>You're verified. Choose a new password for Dispatch HQ.</p>
+      <label for="newPw">New password</label>
+      <input id="newPw" type="password" autocomplete="new-password">
+      <label for="newPw2">Repeat it</label>
+      <input id="newPw2" type="password" autocomplete="new-password">
+      <button class="btn-main" id="btnSetPw">Save &amp; sign in</button>
+      <div class="msg" id="resetMsg"></div>
+    </div>
+  </section>
+
+  <!-- PROSPECTS -->
+  <section id="viewProspects" class="hidden">
+    <div class="toolrow">
+      <input id="searchBox" type="search" placeholder="Search facilities…">
+    </div>
+    <div id="prospectList"></div>
+  </section>
+
+  <!-- DISPATCHES -->
+  <section id="viewDispatch" class="hidden">
+    <div class="panel">
+      <h2>New work order</h2>
+      <label>Facility</label>
+      <select id="ndFacility"></select>
+      <label>Equipment</label>
+      <select id="ndKind">
+        <option value="gate">Gate</option><option value="keypad">Keypad</option>
+        <option value="camera">Camera</option><option value="access_control">Access control</option>
+        <option value="other">Other</option>
+      </select>
+      <label>Issue</label>
+      <input id="ndIssue" placeholder="e.g. Gate stuck open, motor grinding">
+      <label>Tech</label>
+      <select id="ndTech"></select>
+      <details style="margin-top:8px;">
+        <summary class="disp" style="font-size:13px;color:var(--hivis-dk);cursor:pointer;">+ Add a tech</summary>
+        <label>Name</label><input id="ntName">
+        <label>Company</label><input id="ntCompany">
+        <label>Phone</label><input id="ntPhone" inputmode="tel">
+        <button class="btn-ghost btn-sm" id="btnAddTech" style="margin-top:10px;">Save tech</button>
+      </details>
+      <label>Coordination fee (USD)</label>
+      <input id="ndFee" type="number" value="89" inputmode="decimal">
+      <button class="btn-main" id="btnNewDispatch">Create work order</button>
+      <div class="msg" id="ndMsg"></div>
+    </div>
+    <h3 class="sectionh disp">Open + recent work orders</h3>
+    <div id="woList"></div>
+  </section>
+
+  <!-- BOARD -->
+  <section id="viewBoard" class="hidden">
+    <div class="killbar">
+      <strong class="disp" style="font-size:14px;">Niche validation — 20-conversation kill criteria</strong>
+      <div class="track"><div class="fill" id="killFill" style="width:0%"></div></div>
+      <div style="font-size:13px;color:var(--mut);margin-top:6px;"><span id="killCount">0</span> / 20 real operator conversations logged</div>
+    </div>
+    <div class="grid2">
+      <div class="kpi"><div class="n" id="bVOF">0</div><div class="l">Vendor on file</div></div>
+      <div class="kpi"><div class="n" id="bClients">0</div><div class="l">Paying clients</div></div>
+      <div class="kpi"><div class="n" id="bDisp">0</div><div class="l">Total dispatches</div></div>
+      <div class="kpi"><div class="n" id="bFees">$0</div><div class="l">Fees collected</div></div>
+    </div>
+    <h3 class="sectionh disp">Tech scoreboard <span style="color:var(--mut);font-size:12px;">(this data IS the app)</span></h3>
+    <div class="panel" id="techBoard"><div class="empty">No completed dispatches yet — scores appear after your first approved work order.</div></div>
+    <button class="btn-ghost" id="btnSignOut" style="margin-top:16px;">Sign out</button>
+  </section>
+</main>
+
+<nav id="tabs" class="hidden">
+  <button data-tab="viewProspects" class="on">Prospects</button>
+  <button data-tab="viewDispatch">Dispatch</button>
+  <button data-tab="viewBoard">Board</button>
+</nav>
+
+<script>
+const URL_ = 'https://teptzyvzuenolwtfosht.supabase.co';
+const KEY = 'sb_publishable_4LgHf6k24QMus_1nvHPgSg__3rjqh52';
+let token = null, refreshTok = null;
+let facilities = [], techs = [], dispatches = [], outreach = [];
+
+/* ---------- safe storage (persist session; degrades gracefully) ---------- */
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+
+/* ---------- tiny Supabase REST client (no CDN dependency) ---------- */
+async function rest(path, {method='GET', body, prefer, _retried}={}){
+  const h = {'apikey':KEY, 'Content-Type':'application/json'};
+  if(token) h['Authorization'] = 'Bearer '+token;
+  if(prefer) h['Prefer'] = prefer;
+  const res = await fetch(URL_+path, {method, headers:h, body: body?JSON.stringify(body):undefined});
+  const text = await res.text();
+  let data = null; try{ data = text?JSON.parse(text):null; }catch(e){ data = text; }
+  if(res.status===401 && refreshTok && !_retried && !path.startsWith('/auth/')){
+    const ok = await tryRefresh();
+    if(ok) return rest(path, {method, body, prefer, _retried:true});
+  }
+  if(!res.ok){ throw new Error((data && (data.msg||data.message||data.error_description||data.error)) || ('HTTP '+res.status)); }
+  return data;
+}
+async function tryRefresh(){
+  try{
+    const d = await rest('/auth/v1/token?grant_type=refresh_token', {method:'POST', body:{refresh_token:refreshTok}});
+    setSession(d); return true;
+  }catch(e){ clearSession(); showAuth(); return false; }
+}
+function setSession(d){
+  token = d.access_token; 
+  if(d.refresh_token){ refreshTok = d.refresh_token; store.set('dhq_rt', refreshTok); }
+}
+function clearSession(){ token=null; refreshTok=null; store.del('dhq_rt'); }
+
+/* ---------- auth UI ---------- */
+const authMsg = document.getElementById('authMsg');
+function showMsg(el, kind, text){ el.className='msg '+kind; el.textContent=text; }
+function showPanel(id){
+  ['signinPanel','forgotPanel','resetPanel'].forEach(p=>document.getElementById(p).classList.toggle('hidden', p!==id));
+}
+function showAuth(){
+  document.getElementById('viewAuth').classList.remove('hidden');
+  document.getElementById('tabs').classList.add('hidden');
+  ['viewProspects','viewDispatch','viewBoard'].forEach(v=>document.getElementById(v).classList.add('hidden'));
+  showPanel('signinPanel');
+}
+function enterApp(){
+  document.getElementById('viewAuth').classList.add('hidden');
+  document.getElementById('tabs').classList.remove('hidden');
+  document.getElementById('viewProspects').classList.remove('hidden');
+  loadAll().catch(e=>alert('Load failed: '+e.message));
+}
+
+async function signIn(){
+  const email = document.getElementById('email').value.trim();
+  const pw = document.getElementById('pw').value;
+  try{
+    const d = await rest('/auth/v1/token?grant_type=password', {method:'POST', body:{email, password:pw}});
+    setSession(d); enterApp();
+  }catch(e){ showMsg(authMsg,'err','Sign-in failed: '+e.message); }
+}
+async function signUp(){
+  const email = document.getElementById('email').value.trim();
+  const pw = document.getElementById('pw').value;
+  if(pw.length < 6){ showMsg(authMsg,'err','Password needs at least 6 characters.'); return; }
+  try{
+    const d = await rest('/auth/v1/signup', {method:'POST', body:{email, password:pw}});
+    if(d.access_token){ setSession(d); showMsg(authMsg,'ok','Account created. Signing you in…'); setTimeout(enterApp, 400); }
+    else showMsg(authMsg,'ok','Account created. Check your email for the confirmation link, then sign in here.');
+  }catch(e){ showMsg(authMsg,'err','Sign-up failed: '+e.message); }
+}
+async function sendReset(){
+  const email = document.getElementById('fEmail').value.trim();
+  const fm = document.getElementById('forgotMsg');
+  if(!email) return showMsg(fm,'err','Enter your email first.');
+  try{
+    await rest('/auth/v1/recover', {method:'POST', body:{email}});
+    showMsg(fm,'ok','Reset link sent. Open the email on this phone — the link brings you back here to set a new password.');
+  }catch(e){ showMsg(fm,'err','Could not send: '+e.message); }
+}
+async function setNewPassword(){
+  const p1 = document.getElementById('newPw').value;
+  const p2 = document.getElementById('newPw2').value;
+  const rm = document.getElementById('resetMsg');
+  if(p1.length < 6) return showMsg(rm,'err','Password needs at least 6 characters.');
+  if(p1 !== p2) return showMsg(rm,'err','Passwords don\u2019t match.');
+  try{
+    await rest('/auth/v1/user', {method:'PUT', body:{password:p1}});
+    showMsg(rm,'ok','Password updated. Taking you in…');
+    if(refreshTok) store.set('dhq_rt', refreshTok);
+    setTimeout(enterApp, 600);
+  }catch(e){ showMsg(rm,'err','Failed: '+e.message); }
+}
+
+/* ---------- boot: handle recovery links + stored sessions ---------- */
+async function boot(){
+  const hash = new URLSearchParams(location.hash.replace(/^#/,''));
+  if(hash.get('access_token') && hash.get('type')==='recovery'){
+    token = hash.get('access_token');
+    refreshTok = hash.get('refresh_token') || null;
+    history.replaceState(null, '', location.pathname);
+    document.getElementById('viewAuth').classList.remove('hidden');
+    showPanel('resetPanel');
+    return;
+  }
+  if(hash.get('access_token')){ // e.g. email confirmation redirect
+    token = hash.get('access_token');
+    refreshTok = hash.get('refresh_token') || null;
+    if(refreshTok) store.set('dhq_rt', refreshTok);
+    history.replaceState(null, '', location.pathname);
+    enterApp(); return;
+  }
+  const rt = store.get('dhq_rt');
+  if(rt){
+    refreshTok = rt;
+    const ok = await tryRefresh();
+    if(ok){ enterApp(); return; }
+  }
+  showAuth();
+}
+
+/* ---------- data ---------- */
+async function loadAll(){
+  [facilities, techs, dispatches, outreach] = await Promise.all([
+    rest('/rest/v1/facilities?select=*&order=name.asc'),
+    rest('/rest/v1/techs?select=*&order=name.asc'),
+    rest('/rest/v1/dispatches?select=*&order=created_at.desc'),
+    rest('/rest/v1/outreach_log?select=*')
+  ]);
+  const rank = {HOT:0, WARM:1, STANDARD:2, STRATEGIC:3};
+  facilities.sort((a,b)=> (rank[a.priority]-rank[b.priority]) || a.name.localeCompare(b.name));
+  renderAll();
+}
+function renderAll(){ renderHeader(); renderProspects(); renderDispatchForm(); renderWOs(); renderBoard(); }
+
+function renderHeader(){
+  document.getElementById('hCalls').textContent = outreach.length;
+  document.getElementById('hVOF').textContent = facilities.filter(f=>f.vendor_on_file).length;
+  document.getElementById('hDisp').textContent = dispatches.filter(d=>d.status!=='cancelled').length;
+  const fees = dispatches.filter(d=>d.fee_collected).reduce((s,d)=>s+Number(d.coordination_fee_usd||0),0);
+  document.getElementById('hFees').textContent = fees.toFixed(0);
+}
+
+/* ---------- prospects ---------- */
+const STATUSES = [['not_called','Not called'],['no_answer','No answer'],['spoke','Spoke'],['vendor_on_file','Vendor on file ✓'],['declined','Declined'],['client','CLIENT 🎉']];
+function renderProspects(){
+  const q = (document.getElementById('searchBox').value||'').toLowerCase();
+  const list = document.getElementById('prospectList');
+  const rows = facilities.filter(f => !q || (f.name+' '+(f.city||'')+' '+(f.contact_name||'')).toLowerCase().includes(q));
+  list.innerHTML = rows.map(f => `
+    <div class="card" data-fid="${f.id}">
+      <div class="rowtop">
+        <div><div class="fname">${esc(f.name)}</div><div class="fcity">${esc(f.city||'')}</div>
+        ${f.contact_name?`<div class="contact">Ask for: ${esc(f.contact_name)}</div>`:''}</div>
+        <span class="chip ${f.priority}">${f.priority}</span>
+      </div>
+      ${f.fit_notes?`<div class="fnote">${esc(f.fit_notes)}</div>`:''}
+      <div class="frow">
+        ${f.phone?`<a class="tel" href="tel:${f.phone.replace(/[^0-9+]/g,'')}">📞 ${esc(f.phone)}</a>`:''}
+        <select class="statusSel">${STATUSES.map(([v,l])=>`<option value="${v}" ${f.call_status===v?'selected':''}>${l}</option>`).join('')}</select>
+      </div>
+      ${f.call_status!=='not_called'?`<div class="laststatus">Status: ${esc(f.call_status.replace(/_/g,' '))}${f.vendor_on_file?' · number saved ✓':''}</div>`:''}
+      <details class="logbox">
+        <summary>Log a call / visit</summary>
+        <label>Channel</label>
+        <select class="logChannel"><option value="call">Call</option><option value="sms">SMS</option><option value="walk_in">Walk-in</option><option value="email">Email</option><option value="other">Other</option></select>
+        <label>Spoke with</label><input class="logWho" placeholder="Name / role">
+        <label>Outcome</label><input class="logOutcome" placeholder="e.g. Saved my number, wants follow-up in fall">
+        <label>Pain points heard (validation gold)</label><textarea class="logPain" rows="2" placeholder="Who do they call now? How slow? What broke last?"></textarea>
+        <label>Current vendor</label><input class="logVendor" placeholder="e.g. 'a gate guy from Denton'">
+        <button class="btn-main btn-sm logSave" style="margin-top:12px;">Save log</button>
+      </details>
+    </div>`).join('') || '<div class="empty">No matches.</div>';
+}
+
+document.getElementById('searchBox').addEventListener('input', renderProspects);
+
+document.getElementById('prospectList').addEventListener('change', async (e)=>{
+  if(!e.target.classList.contains('statusSel')) return;
+  const card = e.target.closest('[data-fid]'); const id = card.dataset.fid;
+  const val = e.target.value;
+  const patch = {call_status: val};
+  if(val==='vendor_on_file' || val==='client') patch.vendor_on_file = true;
+  try{
+    await rest(`/rest/v1/facilities?id=eq.${id}`, {method:'PATCH', body:patch});
+    const f = facilities.find(x=>x.id===id); Object.assign(f, patch);
+    renderHeader(); renderBoard();
+  }catch(err){ alert('Save failed: '+err.message); }
+});
+
+document.getElementById('prospectList').addEventListener('click', async (e)=>{
+  if(!e.target.classList.contains('logSave')) return;
+  const card = e.target.closest('[data-fid]'); const id = card.dataset.fid;
+  const get = c => card.querySelector(c).value.trim();
+  const entry = {facility_id:id, channel:get('.logChannel'), spoke_with:get('.logWho')||null,
+                 outcome:get('.logOutcome')||null, pain_points:get('.logPain')||null, notes:null};
+  try{
+    await rest('/rest/v1/outreach_log', {method:'POST', body:entry, prefer:'return=representation'});
+    const vendor = get('.logVendor');
+    const fpatch = {};
+    if(entry.pain_points) fpatch.pain_points = entry.pain_points;
+    if(vendor) fpatch.current_vendor = vendor;
+    if(Object.keys(fpatch).length) await rest(`/rest/v1/facilities?id=eq.${id}`, {method:'PATCH', body:fpatch});
+    outreach.push(entry);
+    const f = facilities.find(x=>x.id===id); Object.assign(f, fpatch);
+    e.target.textContent = 'Saved ✓'; setTimeout(()=>{e.target.textContent='Save log';},1500);
+    renderHeader(); renderBoard();
+  }catch(err){ alert('Save failed: '+err.message); }
+});
+
+/* ---------- dispatches ---------- */
+function renderDispatchForm(){
+  document.getElementById('ndFacility').innerHTML =
+    facilities.map(f=>`<option value="${f.id}">${esc(f.name)} — ${esc(f.city||'')}</option>`).join('');
+  document.getElementById('ndTech').innerHTML =
+    '<option value="">— unassigned —</option>' +
+    techs.map(t=>`<option value="${t.id}">${esc(t.name)}${t.company?' · '+esc(t.company):''}</option>`).join('');
+}
+document.getElementById('btnAddTech').addEventListener('click', async ()=>{
+  const name = document.getElementById('ntName').value.trim();
+  if(!name) return alert('Tech needs a name.');
+  try{
+    const rows = await rest('/rest/v1/techs', {method:'POST', prefer:'return=representation',
+      body:{name, company:document.getElementById('ntCompany').value.trim()||null, phone:document.getElementById('ntPhone').value.trim()||null}});
+    techs.push(rows[0]); renderDispatchForm();
+    document.getElementById('ndTech').value = rows[0].id;
+    ['ntName','ntCompany','ntPhone'].forEach(i=>document.getElementById(i).value='');
+  }catch(err){ alert('Save failed: '+err.message); }
+});
+document.getElementById('btnNewDispatch').addEventListener('click', async ()=>{
+  const issue = document.getElementById('ndIssue').value.trim();
+  const ndMsg = document.getElementById('ndMsg');
+  if(!issue) return showMsg(ndMsg,'err','Describe the issue first.');
+  try{
+    const rows = await rest('/rest/v1/dispatches', {method:'POST', prefer:'return=representation', body:{
+      facility_id: document.getElementById('ndFacility').value,
+      tech_id: document.getElementById('ndTech').value || null,
+      equipment_kind: document.getElementById('ndKind').value,
+      issue, coordination_fee_usd: Number(document.getElementById('ndFee').value||89)
+    }});
+    dispatches.unshift(rows[0]);
+    document.getElementById('ndIssue').value='';
+    showMsg(ndMsg,'ok','Work order created.');
+    renderWOs(); renderHeader(); renderBoard();
+  }catch(err){ showMsg(ndMsg,'err','Failed: '+err.message); }
+});
+
+const NEXT = {requested:['dispatched','Mark dispatched'], dispatched:['on_site','Tech on site'], on_site:['completed','Mark completed'], completed:['approved','Client approved ✓']};
+function woNum(d){ return 'WO-'+String(dispatches.length - dispatches.indexOf(d)).padStart(4,'0'); }
+function renderWOs(){
+  const list = document.getElementById('woList');
+  if(!dispatches.length){ list.innerHTML='<div class="empty">No work orders yet. Your first gate call starts here.</div>'; return; }
+  list.innerHTML = dispatches.map(d=>{
+    const f = facilities.find(x=>x.id===d.facility_id)||{};
+    const t = techs.find(x=>x.id===d.tech_id);
+    const nxt = NEXT[d.status];
+    return `<div class="wo" data-did="${d.id}">
+      <div class="perf"></div>
+      <div class="body">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span class="woid">${woNum(d)} · ${new Date(d.created_at).toLocaleDateString()}</span>
+          <span class="stamp st-${d.status}">${d.status.replace('_',' ')}</span>
+        </div>
+        <div class="issue">${esc(d.issue)}</div>
+        <div class="meta">${esc(f.name||'?')} · ${esc(d.equipment_kind.replace('_',' '))}${t?' · Tech: '+esc(t.name):''}</div>
+        <div class="fees">Coordination: $${Number(d.coordination_fee_usd).toFixed(2)} ${d.fee_collected?'✓ collected':'(unpaid)'}${d.repair_cost_usd?' · Repair: $'+Number(d.repair_cost_usd).toFixed(2)+' (paid direct to tech)':''}</div>
+        ${d.status==='completed'||d.status==='approved' ? metricsRow(d) : ''}
+        <div class="advance">
+          ${nxt?`<button class="btn-sm nextBtn" data-next="${nxt[0]}">${nxt[1]}</button>`:''}
+          ${!d.fee_collected && d.status!=='cancelled'?`<button class="btn-sm feeBtn" style="background:var(--ok);color:#fff;">Fee collected</button>`:''}
+          ${d.status!=='approved'&&d.status!=='cancelled'?`<button class="btn-sm cancelbtn cancelBtn">Cancel</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function metricsRow(d){
+  return `<div class="completeform">
+    <div style="font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;">Scorecard (feeds the app)</div>
+    <div class="togglerow">
+      <button class="mBtn ${d.on_time===true?'sel':''} ${d.on_time===false?'selno':''}" data-field="on_time">On time: ${d.on_time===true?'YES':d.on_time===false?'NO':'?'}</button>
+      <button class="mBtn ${d.first_try_approval===true?'sel':''} ${d.first_try_approval===false?'selno':''}" data-field="first_try_approval">First-try fix: ${d.first_try_approval===true?'YES':d.first_try_approval===false?'NO':'?'}</button>
+    </div>
+    <label>Repair cost (tech billed facility directly)</label>
+    <input class="repairCost" type="number" inputmode="decimal" value="${d.repair_cost_usd??''}" placeholder="e.g. 340">
+    <button class="btn-ghost btn-sm saveCost" style="margin-top:8px;">Save cost</button>
+  </div>`;
+}
+document.getElementById('woList').addEventListener('click', async (e)=>{
+  const wo = e.target.closest('[data-did]'); if(!wo) return;
+  const id = wo.dataset.did; const d = dispatches.find(x=>x.id===id);
+  try{
+    if(e.target.classList.contains('nextBtn')){
+      const next = e.target.dataset.next;
+      const patch = {status:next};
+      if(next==='dispatched') patch.dispatched_at = new Date().toISOString();
+      if(next==='completed') patch.completed_at = new Date().toISOString();
+      await rest(`/rest/v1/dispatches?id=eq.${id}`, {method:'PATCH', body:patch});
+      Object.assign(d, patch); renderWOs(); renderHeader(); renderBoard();
+    } else if(e.target.classList.contains('feeBtn')){
+      await rest(`/rest/v1/dispatches?id=eq.${id}`, {method:'PATCH', body:{fee_collected:true}});
+      d.fee_collected = true; renderWOs(); renderHeader(); renderBoard();
+    } else if(e.target.classList.contains('cancelBtn')){
+      if(!confirm('Cancel this work order?')) return;
+      await rest(`/rest/v1/dispatches?id=eq.${id}`, {method:'PATCH', body:{status:'cancelled'}});
+      d.status='cancelled'; renderWOs(); renderHeader(); renderBoard();
+    } else if(e.target.classList.contains('mBtn')){
+      const field = e.target.dataset.field;
+      const cur = d[field]; const next = cur===true ? false : cur===false ? null : true;
+      await rest(`/rest/v1/dispatches?id=eq.${id}`, {method:'PATCH', body:{[field]:next}});
+      d[field]=next; renderWOs(); renderBoard();
+    } else if(e.target.classList.contains('saveCost')){
+      const v = wo.querySelector('.repairCost').value;
+      const cost = v===''?null:Number(v);
+      await rest(`/rest/v1/dispatches?id=eq.${id}`, {method:'PATCH', body:{repair_cost_usd:cost}});
+      d.repair_cost_usd = cost; renderWOs();
+    }
+  }catch(err){ alert('Save failed: '+err.message); }
+});
+
+/* ---------- board ---------- */
+function renderBoard(){
+  const convos = outreach.filter(o=>o.channel==='call'||o.channel==='walk_in').length;
+  document.getElementById('killCount').textContent = convos;
+  document.getElementById('killFill').style.width = Math.min(100, convos/20*100)+'%';
+  document.getElementById('bVOF').textContent = facilities.filter(f=>f.vendor_on_file).length;
+  document.getElementById('bClients').textContent = facilities.filter(f=>f.call_status==='client').length;
+  const live = dispatches.filter(d=>d.status!=='cancelled');
+  document.getElementById('bDisp').textContent = live.length;
+  const fees = dispatches.filter(d=>d.fee_collected).reduce((s,d)=>s+Number(d.coordination_fee_usd||0),0);
+  document.getElementById('bFees').textContent = '$'+fees.toFixed(0);
+  const tb = document.getElementById('techBoard');
+  const done = live.filter(d=>d.tech_id && (d.status==='completed'||d.status==='approved'));
+  if(!done.length){ tb.innerHTML='<div class="empty">No completed dispatches yet — scores appear after your first approved work order.</div>'; return; }
+  const byTech = {};
+  done.forEach(d=>{ (byTech[d.tech_id]=byTech[d.tech_id]||[]).push(d); });
+  tb.innerHTML = Object.entries(byTech).map(([tid, ds])=>{
+    const t = techs.find(x=>x.id===tid)||{name:'?'};
+    const pct = (arr,f)=> { const known = arr.filter(d=>d[f]!==null); return known.length? Math.round(100*known.filter(d=>d[f]).length/known.length)+'%' : '—'; };
+    return `<div class="techline"><strong>${esc(t.name)}</strong>
+      <span class="mono">${ds.length} jobs · first-try ${pct(ds,'first_try_approval')} · on-time ${pct(ds,'on_time')}</span></div>`;
+  }).join('');
+}
+
+/* ---------- tabs, sign out, PWA install, utils ---------- */
+document.getElementById('tabs').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-tab]'); if(!btn) return;
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b===btn));
+  ['viewProspects','viewDispatch','viewBoard'].forEach(v=>document.getElementById(v).classList.toggle('hidden', v!==btn.dataset.tab));
+});
+document.getElementById('btnSignOut').addEventListener('click', ()=>{ clearSession(); location.reload(); });
+function esc(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+document.getElementById('btnSignIn').addEventListener('click', signIn);
+document.getElementById('btnSignUp').addEventListener('click', signUp);
+document.getElementById('btnForgot').addEventListener('click', ()=>showPanel('forgotPanel'));
+document.getElementById('btnBackToSignin').addEventListener('click', ()=>showPanel('signinPanel'));
+document.getElementById('btnSendReset').addEventListener('click', sendReset);
+document.getElementById('btnSetPw').addEventListener('click', setNewPassword);
+document.getElementById('pw').addEventListener('keydown', e=>{ if(e.key==='Enter') signIn(); });
+
+/* installable-app manifest (generated at runtime; lets Android "Add to Home screen" open standalone) */
+(function(){
+  const icon = 'data:image/svg+xml,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="512" height="512" rx="96" fill="#1B2733"/><rect y="416" width="512" height="40" fill="#FF6B1A"/><text x="256" y="300" font-family="Arial,Helvetica,sans-serif" font-size="200" font-weight="800" fill="#FF6B1A" text-anchor="middle">HQ</text></svg>');
+  const manifest = {
+    name: 'Dispatch HQ', short_name: 'DispatchHQ', start_url: location.pathname || '.',
+    display: 'standalone', background_color: '#EEF1F4', theme_color: '#1B2733',
+    icons: [{src: icon, sizes: '512x512', type: 'image/svg+xml', purpose: 'any'}]
+  };
+  const link = document.createElement('link');
+  link.rel = 'manifest';
+  link.href = URL.createObjectURL(new Blob([JSON.stringify(manifest)], {type:'application/json'}));
+  document.head.appendChild(link);
+})();
+
+boot();
+</script>
+</body>
+</html>
