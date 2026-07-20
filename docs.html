@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document Kit — Texas Gate Dispatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#141414; --panel:#1d1d1d; --line:#2c2c2c;
+    --orange:#ff6a00; --hazard:#ffc400;
+    --dim:#9a9a9a; --bright:#f2f2f2;
+    --paper:#ffffff; --ink:#1a1a1a; --ink-dim:#555;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{background:var(--bg); color:var(--bright); font-family:'Archivo',system-ui,sans-serif}
+
+  /* ---------- console chrome (screen only) ---------- */
+  .chrome{max-width:980px; margin:0 auto; padding:0 16px 80px}
+  header.top{
+    padding:22px 0 14px; border-bottom:4px solid var(--orange);
+    background:
+      repeating-linear-gradient(-45deg, transparent 0 14px, rgba(255,196,0,.06) 14px 28px);
+  }
+  .eyebrow{font-stretch:70%; font-weight:700; letter-spacing:.22em; font-size:11px; color:var(--orange); text-transform:uppercase}
+  h1.site{font-stretch:66%; font-weight:900; font-size:clamp(28px,6vw,44px); text-transform:uppercase; letter-spacing:.01em; line-height:1}
+  .subtitle{color:var(--dim); font-size:13px; margin-top:6px}
+
+  .notice{
+    margin:18px 0 0; padding:12px 14px; border-left:4px solid var(--hazard);
+    background:#221d0d; color:#ffe9a8; font-size:13px; line-height:1.5; border-radius:0 6px 6px 0;
+  }
+  .notice strong{color:var(--hazard)}
+
+  nav.manifest{margin:26px 0 10px}
+  .manifest h2{font-stretch:70%; font-weight:800; font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--dim); margin-bottom:10px}
+  .manifest a{
+    display:flex; align-items:baseline; gap:10px; padding:10px 12px; margin-bottom:6px;
+    background:var(--panel); border:1px solid var(--line); border-radius:6px;
+    color:var(--bright); text-decoration:none; font-size:14px;
+  }
+  .manifest a:hover, .manifest a:focus-visible{border-color:var(--orange)}
+  .manifest .tag{font-stretch:70%; font-weight:800; font-size:11px; color:var(--orange); letter-spacing:.08em; min-width:64px}
+  .manifest .use{margin-left:auto; color:var(--dim); font-size:12px}
+
+  /* ---------- toolbar per document ---------- */
+  .docbar{
+    display:flex; flex-wrap:wrap; align-items:center; gap:8px;
+    margin:34px 0 0; padding:10px 12px;
+    background:var(--panel); border:1px solid var(--line); border-bottom:none; border-radius:8px 8px 0 0;
+  }
+  .docbar .tag{font-stretch:70%; font-weight:800; font-size:12px; color:var(--orange); letter-spacing:.1em}
+  .docbar .name{font-weight:700; font-size:14px}
+  .docbar .spacer{flex:1}
+  button.act{
+    font:inherit; font-weight:700; font-size:12px; letter-spacing:.05em;
+    padding:7px 12px; border-radius:5px; cursor:pointer;
+    background:#262626; color:var(--bright); border:1px solid #3a3a3a;
+  }
+  button.act:hover{border-color:var(--orange); color:#fff}
+  button.act.primary{background:var(--orange); border-color:var(--orange); color:#140900}
+  button.act:focus-visible{outline:2px solid var(--hazard); outline-offset:2px}
+
+  /* ---------- the paper sheets ---------- */
+  .sheet{
+    background:var(--paper); color:var(--ink);
+    padding:40px 44px; border-radius:0 0 8px 8px;
+    box-shadow:0 12px 30px rgba(0,0,0,.5);
+    font-family:Georgia,'Times New Roman',serif; font-size:14px; line-height:1.55;
+  }
+  .sheet h2.dtitle{font-family:'Archivo'; font-stretch:70%; font-weight:900; font-size:20px; text-transform:uppercase; letter-spacing:.03em; margin-bottom:2px}
+  .sheet .dsub{font-family:'Archivo'; font-size:12px; color:var(--ink-dim); margin-bottom:18px; letter-spacing:.04em}
+  .sheet h3{font-family:'Archivo'; font-size:13.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; margin:18px 0 6px}
+  .sheet p{margin:8px 0}
+  .sheet ol, .sheet ul{margin:8px 0 8px 22px}
+  .sheet li{margin:5px 0}
+  .fill{background:#fff3bf; padding:0 3px; font-weight:700; white-space:nowrap}
+  .sigrow{display:flex; gap:40px; margin-top:34px; flex-wrap:wrap}
+  .sig{flex:1; min-width:230px}
+  .sigline{border-bottom:1.5px solid var(--ink); height:34px; margin-bottom:5px}
+  .siglabel{font-family:'Archivo'; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim)}
+  table.inv{width:100%; border-collapse:collapse; margin:14px 0}
+  table.inv th, table.inv td{border:1px solid #bbb; padding:8px 10px; text-align:left; font-size:13.5px}
+  table.inv th{font-family:'Archivo'; font-size:11px; text-transform:uppercase; letter-spacing:.06em; background:#f2f2f2}
+  .amount{text-align:right; font-variant-numeric:tabular-nums}
+  .kicker{font-family:'Archivo'; font-weight:800; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-dim)}
+  .check{list-style:none; margin-left:0}
+  .check li{padding-left:30px; position:relative; margin:9px 0}
+  .check li::before{content:""; position:absolute; left:0; top:2px; width:15px; height:15px; border:2px solid var(--ink)}
+
+  footer.pagefoot{margin-top:40px; color:var(--dim); font-size:12px; line-height:1.6}
+  footer.pagefoot a{color:var(--orange)}
+
+  @media (max-width:640px){ .sheet{padding:26px 18px} }
+
+  /* ---------- PRINT: paper only ---------- */
+  @media print{
+    body{background:#fff}
+    header.top, .notice, nav.manifest, .docbar, footer.pagefoot{display:none !important}
+    .chrome{max-width:none; padding:0}
+    .docwrap{display:none}
+    body[data-print="all"] .docwrap{display:block; page-break-after:always}
+    body[data-print="d1"] #wrap-d1{display:block}
+    body[data-print="d2"] #wrap-d2{display:block}
+    body[data-print="d3"] #wrap-d3{display:block}
+    body[data-print="d4"] #wrap-d4{display:block}
+    .sheet{box-shadow:none; border-radius:0; padding:0; font-size:12.5px}
+    .fill{background:none; text-decoration:underline}
+    h3{page-break-after:avoid}
+    .sigrow{page-break-inside:avoid}
+  }
+</style>
+</head>
+<body data-print="all">
+<div class="chrome">
+
+  <header class="top">
+    <div class="eyebrow">Texas Gate Dispatch · Operations</div>
+    <h1 class="site">Document Kit</h1>
+    <div class="subtitle">Coordination agreements, terms, invoice &amp; onboarding — print, save as PDF, or copy into an email.</div>
+  </header>
+
+  <div class="notice">
+    <strong>Templates — not legal advice.</strong> These drafts are structured around the coordinator model (you never handle repair funds or guarantee work). Have a Texas attorney review before first real use, and consider filing the LLC first so contracts are signed by the entity, not you personally. Each agreement includes an assignment clause so it can transfer to Texas Gate Dispatch LLC once formed.
+  </div>
+
+  <nav class="manifest" aria-label="Documents">
+    <h2>Manifest</h2>
+    <a href="#wrap-d1"><span class="tag">DOC 01</span> Independent Technician Coordination Agreement <span class="use">sign with every tech</span></a>
+    <a href="#wrap-d2"><span class="tag">DOC 02</span> Facility Dispatch Coordination Terms <span class="use">send to every facility</span></a>
+    <a href="#wrap-d3"><span class="tag">DOC 03</span> Coordination Fee Invoice <span class="use">bill per dispatch</span></a>
+    <a href="#wrap-d4"><span class="tag">DOC 04</span> Technician Onboarding Checklist <span class="use">send to new recruits</span></a>
+  </nav>
+
+  <!-- ============================== DOC 1 ============================== -->
+  <section class="docwrap" id="wrap-d1">
+    <div class="docbar">
+      <span class="tag">DOC 01</span><span class="name">Technician Coordination Agreement</span>
+      <span class="spacer"></span>
+      <button class="act" onclick="copyDoc('d1', this)">Copy text</button>
+      <button class="act primary" onclick="printDoc('d1')">Print / PDF</button>
+    </div>
+    <article class="sheet" id="d1">
+      <h2 class="dtitle">Independent Technician Coordination Agreement</h2>
+      <div class="dsub">Texas Gate Dispatch — Dispatch Coordination Service</div>
+
+      <p>This Independent Technician Coordination Agreement (the “Agreement”) is entered into as of <span class="fill">[DATE]</span> between <strong>Taylor Keup, an individual doing business as “Texas Gate Dispatch”</strong> (“Coordinator”), and <span class="fill">[TECHNICIAN / COMPANY LEGAL NAME]</span> (“Technician”).</p>
+
+      <h3>1. Nature of the Relationship</h3>
+      <p>Technician is an independent business. Nothing in this Agreement creates an employment, agency, partnership, or joint-venture relationship. Technician controls the means, methods, tools, schedule, and pricing of Technician’s work, and is free to accept or decline any dispatch offered by Coordinator for any reason. Technician may work for any other party at any time.</p>
+
+      <h3>2. Coordination Only; Direct Contracting</h3>
+      <p>Coordinator operates a dispatch coordination service that connects self-storage facilities and similar commercial clients (each a “Facility”) with independent repair technicians. Coordinator does not perform, direct, supervise, inspect, or guarantee any repair work. All repair work is contracted <strong>directly between Technician and the Facility</strong>. Technician invoices the Facility directly, at Technician’s own rates, and collects payment directly from the Facility. Coordinator is not a party to that repair contract and at no time holds, transmits, or controls repair funds.</p>
+
+      <h3>3. Coordination Fee</h3>
+      <p>Coordinator charges each Facility a separate, flat coordination fee for dispatch services. <strong>Technician owes Coordinator nothing.</strong> There is no fee split, referral fee, commission, or deduction from Technician’s invoices under this Agreement.</p>
+
+      <h3>4. Licenses and Legal Compliance</h3>
+      <p>Technician represents and warrants that Technician holds, and will maintain in good standing, every license, registration, and permit required by law for the work Technician accepts — including, where applicable, licensure under the Texas Private Security Act (Tex. Occ. Code ch. 1702, administered by the Texas Department of Public Safety) for alarm, access-control, electronic-security, and related regulated work. Technician will not accept a dispatch for regulated work unless so licensed. Technician will notify Coordinator within 24 hours if any required license or registration lapses, or is suspended or revoked. Technician will comply with all applicable laws and with each Facility’s reasonable site rules.</p>
+
+      <h3>5. Insurance</h3>
+      <p>Technician will maintain commercial general liability insurance of at least <span class="fill">[$1,000,000]</span> per occurrence, plus automobile insurance as required by law, for the duration of this Agreement. Technician will provide Coordinator a current certificate of insurance on request and upon each renewal, and will notify Coordinator promptly of any cancellation or lapse in coverage.</p>
+
+      <h3>6. Dispatch Standards</h3>
+      <p>When Technician accepts a dispatch, Technician agrees to: (a) confirm an arrival window with Coordinator or the Facility; (b) give prompt notice of any delay; (c) photograph the completed work (and, where practical, the pre-repair condition); and (d) provide a brief completion status to Coordinator. Coordinator may track objective performance measures (such as on-time arrival, first-visit resolution, and Facility feedback) and may use them to prioritize future dispatch offers.</p>
+
+      <h3>7. Warranty of Work</h3>
+      <p>Any warranty on parts or workmanship runs solely from Technician to the Facility on Technician’s own terms. Coordinator makes no warranty regarding any repair and has no obligation to remedy any repair.</p>
+
+      <h3>8. Non-Circumvention</h3>
+      <p>For each Facility first introduced to Technician by Coordinator, Technician agrees, for twelve (12) months following the most recent dispatch at that Facility, to route new repair requests from that Facility through Coordinator rather than accepting them directly. This section does not restrict (a) warranty or call-back work on jobs previously dispatched, or (b) Facilities with which Technician had a documented relationship before this Agreement.</p>
+
+      <h3>9. Indemnification</h3>
+      <p>Technician will defend, indemnify, and hold harmless Coordinator from and against any third-party claim, damage, loss, or expense (including reasonable attorney’s fees) arising out of Technician’s work, acts, omissions, or breach of this Agreement.</p>
+
+      <h3>10. Limitation of Liability</h3>
+      <p>Coordinator’s total liability to Technician under this Agreement will not exceed one hundred dollars ($100). Neither party is liable to the other for indirect, incidental, consequential, or lost-profit damages.</p>
+
+      <h3>11. Term and Termination</h3>
+      <p>This Agreement begins on the date above and continues until either party terminates it with written notice (email suffices). Sections 7–10 and any accrued obligations survive termination.</p>
+
+      <h3>12. General</h3>
+      <p>This Agreement is governed by Texas law, with venue in Collin County, Texas. It is the entire agreement between the parties on this subject and may be amended only in a writing signed by both parties. Technician may not assign this Agreement without Coordinator’s consent. <strong>Coordinator may assign this Agreement to a business entity formed by Coordinator (including Texas Gate Dispatch LLC) upon its formation, without Technician’s consent.</strong> This Agreement may be signed in counterparts, and electronic signatures are effective.</p>
+
+      <div class="sigrow">
+        <div class="sig">
+          <div class="sigline"></div>
+          <div class="siglabel">Coordinator — Taylor Keup d/b/a Texas Gate Dispatch · Date</div>
+        </div>
+        <div class="sig">
+          <div class="sigline"></div>
+          <div class="siglabel">Technician — Name, Title, Company · Date</div>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============================== DOC 2 ============================== -->
+  <section class="docwrap" id="wrap-d2">
+    <div class="docbar">
+      <span class="tag">DOC 02</span><span class="name">Facility Dispatch Coordination Terms</span>
+      <span class="spacer"></span>
+      <button class="act" onclick="copyDoc('d2', this)">Copy text</button>
+      <button class="act primary" onclick="printDoc('d2')">Print / PDF</button>
+    </div>
+    <article class="sheet" id="d2">
+      <h2 class="dtitle">Dispatch Coordination Terms</h2>
+      <div class="dsub">Texas Gate Dispatch · <span class="fill">[PHONE]</span> · <span class="fill">[EMAIL]</span></div>
+
+      <p>These Terms govern dispatch coordination services provided by <strong>Taylor Keup d/b/a Texas Gate Dispatch</strong> (“Coordinator”) to <span class="fill">[FACILITY LEGAL NAME / LOCATION]</span> (“Facility”). Requesting a dispatch after receiving these Terms constitutes acceptance, whether or not signed below.</p>
+
+      <h3>1. The Service</h3>
+      <p>Coordinator provides on-call coordination for gate, keypad, camera, and access-control repairs: intake of the issue, matching to an appropriate independent technician from Coordinator’s vetted roster, dispatch, and follow-up through completion.</p>
+
+      <h3>2. Vetting</h3>
+      <p>Before dispatch, Coordinator confirms each technician’s certificate of general liability insurance and — for work regulated under the Texas Private Security Act (Tex. Occ. Code ch. 1702) — verifies the technician’s Texas DPS license status in the state’s TOPS licensing system. Vetting confirms credentials; it is not a guarantee of workmanship.</p>
+
+      <h3>3. Independent Technicians; Direct Billing</h3>
+      <p>Each technician is an independent business, not Coordinator’s employee or agent. The repair itself is contracted directly between Facility and the technician: the technician quotes their own rates, performs the work, warrants the work on their own terms, and <strong>invoices Facility directly</strong>. Coordinator does not perform or supervise repairs and never handles repair funds.</p>
+
+      <h3>4. Coordination Fee</h3>
+      <p>Facility pays Coordinator a flat coordination fee of <span class="fill">[$89]</span> per dispatch. The fee is earned when the assigned technician arrives at the Facility. No fee is due if Coordinator cannot source a technician or the technician fails to arrive. Invoices are due net fifteen (15) days.</p>
+
+      <h3>5. Liability</h3>
+      <p>Facility’s remedy for any issue with repair work lies against the technician who performed it. Coordinator’s total liability to Facility will not exceed the coordination fees paid by Facility in the three (3) months before the claim. Neither party is liable for indirect, incidental, consequential, or lost-profit damages.</p>
+
+      <h3>6. General</h3>
+      <p>Either party may stop using the service at any time; accrued fees remain payable. These Terms are governed by Texas law, venue in Collin County, Texas, and may be assigned by Coordinator to a business entity formed by Coordinator (including Texas Gate Dispatch LLC) upon its formation.</p>
+
+      <div class="sigrow">
+        <div class="sig">
+          <div class="sigline"></div>
+          <div class="siglabel">Facility — Name &amp; Title · Date</div>
+        </div>
+        <div class="sig">
+          <div class="sigline"></div>
+          <div class="siglabel">Coordinator — Taylor Keup d/b/a Texas Gate Dispatch · Date</div>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============================== DOC 3 ============================== -->
+  <section class="docwrap" id="wrap-d3">
+    <div class="docbar">
+      <span class="tag">DOC 03</span><span class="name">Coordination Fee Invoice</span>
+      <span class="spacer"></span>
+      <button class="act" onclick="copyDoc('d3', this)">Copy text</button>
+      <button class="act primary" onclick="printDoc('d3')">Print / PDF</button>
+    </div>
+    <article class="sheet" id="d3">
+      <h2 class="dtitle">Invoice</h2>
+      <div class="dsub">Texas Gate Dispatch · Taylor Keup · <span class="fill">[MAILING ADDRESS]</span> · <span class="fill">[PHONE]</span> · <span class="fill">[EMAIL]</span></div>
+
+      <p><span class="kicker">Invoice №</span> <span class="fill">[TGD-2026-001]</span>&nbsp;&nbsp;&nbsp;<span class="kicker">Date</span> <span class="fill">[DATE]</span>&nbsp;&nbsp;&nbsp;<span class="kicker">Terms</span> Net 15</p>
+      <p><span class="kicker">Bill to</span><br><span class="fill">[FACILITY NAME]</span><br><span class="fill">[FACILITY BILLING ADDRESS]</span></p>
+
+      <table class="inv">
+        <thead><tr><th>Description</th><th style="width:110px">Amount</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Dispatch coordination fee — <span class="fill">[equipment / issue]</span>, work order <span class="fill">[WO #]</span>, technician dispatched <span class="fill">[DATE]</span>.<br>
+            <em>Repair work is billed to you separately and directly by the technician.</em></td>
+            <td class="amount"><span class="fill">$89.00</span></td>
+          </tr>
+          <tr><td style="text-align:right"><strong>Total due</strong></td><td class="amount"><strong><span class="fill">$89.00</span></strong></td></tr>
+        </tbody>
+      </table>
+
+      <p><span class="kicker">Payment</span> — Check payable to <span class="fill">[Taylor Keup]</span>, or Zelle to <span class="fill">[PHONE / EMAIL]</span>. Please reference the invoice number. Questions: <span class="fill">[PHONE]</span>.</p>
+      <p style="margin-top:16px; color:#555; font-size:12.5px">Thank you — we’ll be here the next time a gate won’t close.</p>
+    </article>
+  </section>
+
+  <!-- ============================== DOC 4 ============================== -->
+  <section class="docwrap" id="wrap-d4">
+    <div class="docbar">
+      <span class="tag">DOC 04</span><span class="name">Technician Onboarding Checklist</span>
+      <span class="spacer"></span>
+      <button class="act" onclick="copyDoc('d4', this)">Copy text</button>
+      <button class="act primary" onclick="printDoc('d4')">Print / PDF</button>
+    </div>
+    <article class="sheet" id="d4">
+      <h2 class="dtitle">Welcome to the Dispatch Roster</h2>
+      <div class="dsub">Texas Gate Dispatch — Technician Onboarding</div>
+
+      <p>We coordinate gate, keypad, camera, and access-control repair calls for self-storage facilities across North DFW and send them to vetted independent techs. Here’s the deal, plainly:</p>
+      <ul>
+        <li><strong>You never pay us anything.</strong> The facility pays our coordination fee; you bill the facility directly at your own rates and keep 100%.</li>
+        <li><strong>You choose your jobs.</strong> Every dispatch is offered by text — accept or pass, no penalty.</li>
+        <li><strong>Reliability gets rewarded.</strong> On-time arrivals and first-visit fixes move you to the top of the call list.</li>
+      </ul>
+
+      <h3>Send us these five things to go active</h3>
+      <ul class="check">
+        <li><strong>Certificate of insurance</strong> — commercial general liability, $1M per occurrence.</li>
+        <li><strong>Texas DPS license number</strong> — required only if you take alarm / access-control / electronic security work (we verify status in the state TOPS system). Mechanical-gate-only techs can skip this.</li>
+        <li><strong>Signed Coordination Agreement</strong> (we’ll send it — two pages, plain English).</li>
+        <li><strong>Your coverage</strong> — service area, trades you take (gate mechanical, gate operators, keypads, access control, cameras), and typical service-call rate so we can quote facilities accurately.</li>
+        <li><strong>Best cell number</strong> for dispatch texts.</li>
+      </ul>
+
+      <h3>How a dispatch works</h3>
+      <ol>
+        <li>We text you the facility, the equipment, and the issue.</li>
+        <li>You accept and give us an arrival window; we confirm with the facility.</li>
+        <li>You do the work, snap photos of the completed repair, and text us “done.”</li>
+        <li>You invoice the facility directly and get paid on your terms.</li>
+      </ol>
+
+      <p style="margin-top:14px">Questions: <span class="fill">[PHONE]</span> · <span class="fill">[EMAIL]</span></p>
+    </article>
+  </section>
+
+  <footer class="pagefoot">
+    <p><strong>Also in your kit (not printable from here):</strong> your own IRS Form W-9 — facilities that pay coordination fees may request it; download the current form at irs.gov and keep a filled copy ready. And the standing to-do: file <strong>Texas Gate Dispatch LLC</strong> (Texas SOSDirect, $300 filing fee) before signing these with real counterparties, then re-execute or assign under the LLC.</p>
+    <p style="margin-top:8px">Tech license verification: <a href="https://tops.portal.texas.gov/psp-self-service/search/index" target="_blank" rel="noopener">Texas DPS TOPS — Search Licensees</a></p>
+  </footer>
+</div>
+
+<script>
+  function printDoc(id){
+    document.body.dataset.print = id;
+    window.print();
+  }
+  window.addEventListener('afterprint', function(){ document.body.dataset.print = 'all'; });
+
+  function copyDoc(id, btn){
+    var text = document.getElementById(id).innerText;
+    navigator.clipboard.writeText(text).then(function(){
+      var old = btn.textContent;
+      btn.textContent = 'Copied';
+      setTimeout(function(){ btn.textContent = old; }, 1600);
+    }).catch(function(){
+      btn.textContent = 'Copy failed — select & copy manually';
+    });
+  }
+</script>
+</body>
+</html>
