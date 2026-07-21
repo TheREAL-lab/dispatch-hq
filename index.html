@@ -2,647 +2,467 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#1B2733">
-<title>Dispatch HQ — North DFW Gate &amp; Access Coordination</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --steel:#1B2733; --steel-2:#2C3A47; --paper:#EEF1F4; --card:#FFFFFF;
-    --hivis:#FF6B1A; --hivis-dk:#D9530A; --line:#C9D1D9; --ink:#1B2733;
-    --mut:#5A6B7A; --ok:#1F7A4D; --warn:#B7791F; --hot:#C0392B; --blue:#33566B;
-    --r:10px;
-  }
-  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
-  html,body{height:100%;}
-  body{font-family:'Barlow',system-ui,sans-serif; background:var(--paper); color:var(--ink); font-size:16px;}
-  .mono{font-family:'IBM Plex Mono',monospace;}
-  h1,h2,h3,.disp{font-family:'Barlow Semi Condensed',sans-serif; text-transform:uppercase; letter-spacing:.03em;}
-
-  header{
-    background:linear-gradient(180deg,var(--steel) 0%,var(--steel-2) 100%);
-    color:#fff; padding:14px 16px 12px; position:sticky; top:0; z-index:20;
-    border-bottom:4px solid var(--hivis);
-  }
-  header h1{font-size:20px; font-weight:800;}
-  header .sub{font-size:12px; color:#9FB0BF; letter-spacing:.08em; text-transform:uppercase;}
-  .daybar{display:flex; gap:14px; margin-top:10px;}
-  .daybar .stat{flex:1; text-align:center;}
-  .daybar .n{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:18px; color:var(--hivis);}
-  .daybar .l{font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#9FB0BF;}
-
-  main{padding:14px 14px 84px; max-width:680px; margin:0 auto;}
-
-  .panel{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:18px; margin-top:16px;}
-  .panel h2{font-size:18px; margin-bottom:4px;}
-  .panel p{color:var(--mut); font-size:14px; margin-bottom:14px;}
-  label{display:block; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--mut); margin:12px 0 4px;}
-  input,select,textarea{
-    width:100%; padding:12px; border:1.5px solid var(--line); border-radius:8px;
-    font:inherit; background:#fff; min-height:44px;
-  }
-  input:focus,select:focus,textarea:focus,button:focus-visible{outline:3px solid rgba(255,107,26,.45); outline-offset:1px;}
-  button{
-    font-family:'Barlow Semi Condensed',sans-serif; text-transform:uppercase; letter-spacing:.05em;
-    font-weight:700; font-size:15px; border:none; border-radius:8px; padding:13px 16px;
-    min-height:46px; cursor:pointer;
-  }
-  .btn-main{background:var(--hivis); color:#fff; width:100%; margin-top:16px;}
-  .btn-main:active{background:var(--hivis-dk);}
-  .btn-ghost{background:transparent; color:var(--blue); width:100%; margin-top:8px; border:1.5px solid var(--line);}
-  .btn-sm{padding:8px 12px; min-height:38px; font-size:13px;}
-  .linklike{background:none; border:none; color:var(--hivis-dk); font-family:'Barlow',sans-serif; font-size:14px;
-    text-transform:none; letter-spacing:0; font-weight:600; padding:10px 0 0; min-height:0; width:auto;}
-  .msg{margin-top:12px; font-size:14px; padding:10px 12px; border-radius:8px; display:none;}
-  .msg.err{display:block; background:#FBE9E7; color:var(--hot); border:1px solid #E7B4AD;}
-  .msg.ok{display:block; background:#E5F3EC; color:var(--ok); border:1px solid #B5D9C6;}
-
-  nav{
-    position:fixed; bottom:0; left:0; right:0; z-index:30;
-    background:var(--steel); display:flex; border-top:3px solid var(--hivis);
-    padding-bottom:env(safe-area-inset-bottom);
-  }
-  nav button{
-    flex:1; background:none; color:#8FA2B2; border-radius:0; font-size:13px; padding:12px 4px;
-  }
-  nav button.on{color:#fff; background:var(--steel-2); box-shadow:inset 0 3px 0 var(--hivis);}
-
-  .toolrow{display:flex; gap:8px; margin-bottom:12px;}
-  .toolrow input{flex:1;}
-  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:14px; margin-bottom:10px;}
-  .rowtop{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
-  .fname{font-family:'Barlow Semi Condensed',sans-serif; font-weight:700; font-size:17px; line-height:1.15;}
-  .fcity{color:var(--mut); font-size:13px; margin-top:1px;}
-  .chip{font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em;
-    padding:4px 8px; border-radius:4px; white-space:nowrap;}
-  .chip.HOT{background:#FBE9E7; color:var(--hot); border:1px solid #E7B4AD;}
-  .chip.WARM{background:#FCF3E3; color:var(--warn); border:1px solid #E8D5AC;}
-  .chip.STANDARD{background:#E9EEF2; color:var(--blue); border:1px solid var(--line);}
-  .chip.STRATEGIC{background:#E8E4F5; color:#5B4B9E; border:1px solid #C9C0E8;}
-  .fnote{font-size:14px; color:#33424F; margin:8px 0;}
-  .frow{display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;}
-  a.tel{
-    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:15px; color:#fff;
-    background:var(--blue); text-decoration:none; padding:10px 14px; border-radius:8px; min-height:44px;
-    display:inline-flex; align-items:center;
-  }
-  .frow select{flex:1; min-width:150px;}
-  details.logbox{margin-top:10px;}
-  details.logbox summary{
-    font-family:'Barlow Semi Condensed',sans-serif; font-weight:700; font-size:13px; text-transform:uppercase;
-    letter-spacing:.05em; color:var(--hivis-dk); cursor:pointer; padding:6px 0;
-  }
-  .contact{font-size:13px; color:var(--mut); margin-top:2px;}
-  .laststatus{font-size:12px; color:var(--ok); font-weight:600; margin-top:6px;}
-
-  .wo{
-    background:var(--card); border:1px solid var(--line); border-radius:var(--r);
-    margin-bottom:12px; display:flex; overflow:hidden;
-  }
-  .wo .perf{
-    width:16px; flex:none; background:var(--steel);
-    background-image:radial-gradient(circle at 8px 10px, var(--paper) 3.2px, transparent 3.6px);
-    background-size:16px 20px; background-repeat:repeat-y;
-  }
-  .wo .body{flex:1; padding:12px 14px;}
-  .wo .woid{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--mut); letter-spacing:.06em;}
-  .stamp{
-    font-family:'Barlow Semi Condensed',sans-serif; font-weight:800; font-size:11px; letter-spacing:.12em;
-    text-transform:uppercase; border:2px solid; border-radius:4px; padding:3px 8px; display:inline-block;
-    transform:rotate(-2deg);
-  }
-  .st-requested{color:var(--warn); border-color:var(--warn);}
-  .st-dispatched{color:var(--blue); border-color:var(--blue);}
-  .st-on_site{color:#7A5AC0; border-color:#7A5AC0;}
-  .st-completed{color:var(--ok); border-color:var(--ok);}
-  .st-approved{color:#fff; border-color:var(--ok); background:var(--ok);}
-  .st-cancelled{color:var(--mut); border-color:var(--mut);}
-  .wo .issue{font-size:15px; font-weight:500; margin:6px 0 2px;}
-  .wo .meta{font-size:13px; color:var(--mut);}
-  .wo .fees{font-family:'IBM Plex Mono',monospace; font-size:13px; margin-top:6px;}
-  .advance{margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;}
-  .advance button{background:var(--steel); color:#fff;}
-  .advance .cancelbtn{background:transparent; color:var(--hot); border:1.5px solid #E7B4AD;}
-  .completeform{margin-top:10px; border-top:1px dashed var(--line); padding-top:10px;}
-  .togglerow{display:flex; gap:8px; margin-top:8px;}
-  .togglerow button{flex:1; background:#E9EEF2; color:var(--blue);}
-  .togglerow button.sel{background:var(--ok); color:#fff;}
-  .togglerow button.selno{background:var(--hot); color:#fff;}
-
-  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-  .kpi{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:14px; text-align:center;}
-  .kpi .n{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:26px;}
-  .kpi .l{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--mut); margin-top:2px;}
-  .killbar{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:14px; margin:10px 0;}
-  .killbar .track{height:14px; background:#E2E8ED; border-radius:7px; overflow:hidden; margin-top:8px;}
-  .killbar .fill{height:100%; background:var(--hivis); transition:width .4s ease;}
-  .techline{display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px dashed var(--line); font-size:14px;}
-  .techline:last-child{border-bottom:none;}
-  .empty{color:var(--mut); font-size:14px; text-align:center; padding:26px 10px;}
-  .sectionh{font-size:15px; margin:18px 0 8px; color:var(--steel);}
-  .hidden{display:none;}
-  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#141414">
+<title>Dispatch HQ — Texas Gate Dispatch</title>
+<!-- DHQ v2.1 command console -->
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>
+:root{--bg:#141414;--panel:#1d1d1d;--line:#2c2c2c;--orange:#ff6a00;--hazard:#ffc400;--dim:#9a9a9a;
+--bright:#f2f2f2;--good:#2ecc71;--bad:#ff5c5c}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--bright);font-family:'Archivo',system-ui,sans-serif;padding-bottom:84px}
+.wrap{max-width:920px;margin:0 auto;padding:0 12px}
+header.top{padding:14px 0 10px;border-bottom:4px solid var(--orange);
+ background:repeating-linear-gradient(-45deg,transparent 0 14px,rgba(255,196,0,.06) 14px 28px)}
+.eyebrow{font-stretch:70%;font-weight:700;letter-spacing:.22em;font-size:10.5px;color:var(--orange);text-transform:uppercase}
+h1.site{font-stretch:66%;font-weight:900;font-size:clamp(22px,5vw,32px);text-transform:uppercase;line-height:1}
+.who{color:var(--dim);font-size:11.5px;margin-top:3px}
+.who a{color:var(--dim)}
+nav.main{display:flex;gap:6px;overflow-x:auto;padding:10px 0 4px;scrollbar-width:none}
+nav.main::-webkit-scrollbar{display:none}
+nav.main a,nav.main button{font:inherit;font-stretch:70%;font-weight:800;font-size:12.5px;letter-spacing:.07em;
+ text-transform:uppercase;padding:9px 13px;border-radius:6px;background:var(--panel);border:1px solid var(--line);
+ color:var(--dim);cursor:pointer;white-space:nowrap;text-decoration:none}
+nav.main .on{color:#140900;background:var(--orange);border-color:var(--orange)}
+nav.main .ext{border-style:dashed}
+h2.sec{font-stretch:70%;font-weight:800;font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+ color:var(--dim);margin:18px 0 8px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:12px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.kpi .n{font-stretch:66%;font-weight:900;font-size:24px;color:var(--orange)}
+.kpi .l{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+.bar{height:8px;background:#262626;border-radius:5px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--orange)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 13px;margin-bottom:8px;cursor:pointer}
+.card:hover{border-color:#4a4a4a}
+.card .r1{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.card .nm{font-weight:800;font-size:15px}
+.card .rt{margin-left:auto;font-size:12px;color:var(--dim);white-space:nowrap}
+.card .meta{color:var(--dim);font-size:12px;margin-top:3px}
+.card .meta a{color:var(--bright);font-weight:700;text-decoration:none}
+.pri{font-size:10px;font-weight:800;letter-spacing:.06em;padding:2px 7px;border-radius:4px;border:1px solid #3a3a3a;color:var(--dim)}
+.pri.HOT{border-color:var(--orange);color:var(--orange)}
+.pri.WARM{border-color:var(--hazard);color:var(--hazard)}
+.pri.STRATEGIC{border-color:#7aa7ff;color:#7aa7ff}
+.st{font-size:10px;font-weight:800;letter-spacing:.05em;padding:2px 7px;border-radius:4px;background:#262626;
+ border:1px solid #3a3a3a;color:var(--dim);text-transform:uppercase}
+.st.approved{border-color:var(--good);color:var(--good)}
+.st.cancelled{border-color:var(--bad);color:var(--bad)}
+.st.completed,.st.on_site{border-color:var(--hazard);color:var(--hazard)}
+.st.dispatched{border-color:var(--orange);color:var(--orange)}
+.ok{color:var(--good);font-weight:800}.no{color:var(--bad);font-weight:800}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 10px}
+.chips button{font:inherit;font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:14px;background:var(--panel);
+ border:1px solid var(--line);color:var(--dim);cursor:pointer}
+.chips button.on{border-color:var(--orange);color:var(--orange)}
+input,select,textarea{width:100%;padding:10px;background:#111;border:1px solid #3a3a3a;border-radius:6px;
+ color:var(--bright);font:inherit;font-size:14px;margin-bottom:8px}
+label{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;display:block;margin:6px 0 3px}
+button.b{font:inherit;font-weight:800;font-size:13px;letter-spacing:.04em;padding:10px 15px;border-radius:6px;
+ cursor:pointer;border:1px solid #3a3a3a;background:#262626;color:var(--bright)}
+button.b.go{background:var(--orange);border-color:var(--orange);color:#140900}
+button.b.warn{border-color:var(--bad);color:var(--bad);background:transparent}
+button.b:disabled{opacity:.45}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1;min-width:120px}
+.drawer{position:fixed;inset:auto 0 0 0;max-height:88vh;overflow-y:auto;background:#191919;border-top:4px solid var(--orange);
+ border-radius:14px 14px 0 0;padding:16px 14px 30px;z-index:50;display:none;box-shadow:0 -10px 40px rgba(0,0,0,.6)}
+.drawer.open{display:block}
+.drawer .dh{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+.drawer .dh .t{font-stretch:70%;font-weight:900;font-size:19px;text-transform:uppercase}
+.drawer .x{margin-left:auto;font-size:22px;color:var(--dim);cursor:pointer;background:none;border:none}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:40;display:none}
+.scrim.open{display:block}
+.empty{color:var(--dim);text-align:center;padding:26px 8px;font-size:13.5px}
+.note{margin:10px 0;padding:9px 11px;border-left:4px solid var(--hazard);background:#221d0d;color:#ffe9a8;
+ font-size:12px;line-height:1.5;border-radius:0 6px 6px 0}
+#login{max-width:380px;margin:52px auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px}
+#login h2{font-stretch:70%;font-weight:900;text-transform:uppercase;margin-bottom:12px}
+.err{color:#ff7a7a;font-size:12.5px;min-height:16px;margin-top:6px}
+.toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:var(--orange);color:#140900;
+ font-weight:800;padding:10px 18px;border-radius:7px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:99;max-width:92%}
+.toast.show{opacity:1}
+.fab{position:fixed;right:16px;bottom:16px;z-index:30;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+table.t{width:100%;border-collapse:collapse;font-size:12.5px}
+table.t td,table.t th{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}
+table.t th{color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spacing:.07em}
+.mut{color:var(--dim);font-size:12px}
 </style>
 </head>
 <body>
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Texas Gate Dispatch</div>
+    <h1 class="site">Dispatch HQ</h1>
+    <div class="who" id="who"></div>
+  </header>
 
-<header>
-  <h1>Dispatch HQ</h1>
-  <div class="sub">North DFW · Gate / Keypad / Camera / Access Coordination</div>
-  <div class="daybar" id="daybar">
-    <div class="stat"><div class="n" id="hCalls">–</div><div class="l">Calls logged</div></div>
-    <div class="stat"><div class="n" id="hVOF">–</div><div class="l">Vendor on file</div></div>
-    <div class="stat"><div class="n" id="hDisp">–</div><div class="l">Dispatches</div></div>
-    <div class="stat"><div class="n" id="hFees">–</div><div class="l">Fees ($)</div></div>
+  <div id="login" style="display:none">
+    <h2 id="lt">Sign in</h2>
+    <input id="lem" type="email" placeholder="Email" autocomplete="username">
+    <input id="lfn" type="text" placeholder="Full name" style="display:none">
+    <input id="lpw" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="b go" style="width:100%" onclick="doAuth()">Continue</button>
+    <div class="err" id="lerr"></div>
+    <div class="mut" style="margin-top:10px;cursor:pointer" onclick="toggleMode()" id="lmode">New hire? Create account</div>
   </div>
-</header>
 
-<main>
-  <!-- AUTH -->
-  <section id="viewAuth">
-    <div class="panel" id="signinPanel">
-      <h2>Sign in</h2>
-      <p>Your ops tool. Data saves straight to the REAL WORK PROJECT database.</p>
-      <label for="email">Email</label>
-      <input id="email" type="email" autocomplete="username" inputmode="email">
-      <label for="pw">Password</label>
-      <input id="pw" type="password" autocomplete="current-password">
-      <button class="btn-main" id="btnSignIn">Sign in</button>
-      <button class="btn-ghost" id="btnSignUp">First time? Create account</button>
-      <button class="linklike" id="btnForgot">Forgot password?</button>
-      <div class="msg" id="authMsg"></div>
-    </div>
+  <div id="pending" style="display:none">
+    <div class="note" style="margin-top:26px">Account created. You're awaiting approval — the owner will activate your access in the Team tab.</div>
+    <button class="b" onclick="signOut()">Sign out</button>
+  </div>
 
-    <div class="panel hidden" id="forgotPanel">
-      <h2>Reset password</h2>
-      <p>Enter your account email — you'll get a reset link. Open it on this phone.</p>
-      <label for="fEmail">Email</label>
-      <input id="fEmail" type="email" inputmode="email" autocomplete="username">
-      <button class="btn-main" id="btnSendReset">Send reset link</button>
-      <button class="linklike" id="btnBackToSignin">← Back to sign in</button>
-      <div class="msg" id="forgotMsg"></div>
-    </div>
+  <div id="app" style="display:none">
+    <nav class="main" id="nav"></nav>
+    <div id="view"></div>
+  </div>
+</div>
 
-    <div class="panel hidden" id="resetPanel">
-      <h2>Set new password</h2>
-      <p>You're verified. Choose a new password for Dispatch HQ.</p>
-      <label for="newPw">New password</label>
-      <input id="newPw" type="password" autocomplete="new-password">
-      <label for="newPw2">Repeat it</label>
-      <input id="newPw2" type="password" autocomplete="new-password">
-      <button class="btn-main" id="btnSetPw">Save &amp; sign in</button>
-      <div class="msg" id="resetMsg"></div>
-    </div>
-  </section>
-
-  <!-- PROSPECTS -->
-  <section id="viewProspects" class="hidden">
-    <div class="toolrow">
-      <input id="searchBox" type="search" placeholder="Search facilities…">
-    </div>
-    <div id="prospectList"></div>
-  </section>
-
-  <!-- DISPATCHES -->
-  <section id="viewDispatch" class="hidden">
-    <div class="panel">
-      <h2>New work order</h2>
-      <label>Facility</label>
-      <select id="ndFacility"></select>
-      <label>Equipment</label>
-      <select id="ndKind">
-        <option value="gate">Gate</option><option value="keypad">Keypad</option>
-        <option value="camera">Camera</option><option value="access_control">Access control</option>
-        <option value="other">Other</option>
-      </select>
-      <label>Issue</label>
-      <input id="ndIssue" placeholder="e.g. Gate stuck open, motor grinding">
-      <label>Tech</label>
-      <select id="ndTech"></select>
-      <details style="margin-top:8px;">
-        <summary class="disp" style="font-size:13px;color:var(--hivis-dk);cursor:pointer;">+ Add a tech</summary>
-        <label>Name</label><input id="ntName">
-        <label>Company</label><input id="ntCompany">
-        <label>Phone</label><input id="ntPhone" inputmode="tel">
-        <button class="btn-ghost btn-sm" id="btnAddTech" style="margin-top:10px;">Save tech</button>
-      </details>
-      <label>Coordination fee (USD)</label>
-      <input id="ndFee" type="number" value="89" inputmode="decimal">
-      <button class="btn-main" id="btnNewDispatch">Create work order</button>
-      <div class="msg" id="ndMsg"></div>
-    </div>
-    <h3 class="sectionh disp">Open + recent work orders</h3>
-    <div id="woList"></div>
-  </section>
-
-  <!-- BOARD -->
-  <section id="viewBoard" class="hidden">
-    <div class="killbar">
-      <strong class="disp" style="font-size:14px;">Niche validation — 20-conversation kill criteria</strong>
-      <div class="track"><div class="fill" id="killFill" style="width:0%"></div></div>
-      <div style="font-size:13px;color:var(--mut);margin-top:6px;"><span id="killCount">0</span> / 20 real operator conversations logged</div>
-    </div>
-    <div class="grid2">
-      <div class="kpi"><div class="n" id="bVOF">0</div><div class="l">Vendor on file</div></div>
-      <div class="kpi"><div class="n" id="bClients">0</div><div class="l">Paying clients</div></div>
-      <div class="kpi"><div class="n" id="bDisp">0</div><div class="l">Total dispatches</div></div>
-      <div class="kpi"><div class="n" id="bFees">$0</div><div class="l">Fees collected</div></div>
-    </div>
-    <h3 class="sectionh disp">Tech scoreboard <span style="color:var(--mut);font-size:12px;">(this data IS the app)</span></h3>
-    <div class="panel" id="techBoard"><div class="empty">No completed dispatches yet — scores appear after your first approved work order.</div></div>
-    <button class="btn-ghost" id="btnSignOut" style="margin-top:16px;">Sign out</button>
-  </section>
-</main>
-
-<nav id="tabs" class="hidden">
-  <button data-tab="viewProspects" class="on">Prospects</button>
-  <button data-tab="viewDispatch">Dispatch</button>
-  <button data-tab="viewBoard">Board</button>
-</nav>
+<div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer"></div>
+<div class="toast" id="toast"></div>
 
 <script>
-const URL_ = 'https://teptzyvzuenolwtfosht.supabase.co';
-const KEY = 'sb_publishable_4LgHf6k24QMus_1nvHPgSg__3rjqh52';
-let token = null, refreshTok = null;
-let facilities = [], techs = [], dispatches = [], outreach = [];
+const SB_URL='https://teptzyvzuenolwtfosht.supabase.co', SB_KEY='sb_publishable_4LgHf6k24QMus_1nvHPgSg__3rjqh52';
+let sb, me={role:null,uid:null,email:null,scope:'all'}, view='command', signup=false;
+let F=[], T=[], D=[], O=[], STAFF=[], FEE=89, pipeFilter='queue', jobFilter='active';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const toast=m=>{const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400)};
+const fmt=d=>d?new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+const PRI_ORD={HOT:0,WARM:1,STANDARD:2,STRATEGIC:3};
+const CONVO=['spoke','vendor_on_file','declined','client'];
 
-/* ---------- safe storage (persist session; degrades gracefully) ---------- */
-const store = {
-  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
-  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} },
-  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
-};
-
-/* ---------- tiny Supabase REST client (no CDN dependency) ---------- */
-async function rest(path, {method='GET', body, prefer, _retried}={}){
-  const h = {'apikey':KEY, 'Content-Type':'application/json'};
-  if(token) h['Authorization'] = 'Bearer '+token;
-  if(prefer) h['Prefer'] = prefer;
-  const res = await fetch(URL_+path, {method, headers:h, body: body?JSON.stringify(body):undefined});
-  const text = await res.text();
-  let data = null; try{ data = text?JSON.parse(text):null; }catch(e){ data = text; }
-  if(res.status===401 && refreshTok && !_retried && !path.startsWith('/auth/')){
-    const ok = await tryRefresh();
-    if(ok) return rest(path, {method, body, prefer, _retried:true});
-  }
-  if(!res.ok){ throw new Error((data && (data.msg||data.message||data.error_description||data.error)) || ('HTTP '+res.status)); }
-  return data;
-}
-async function tryRefresh(){
-  try{
-    const d = await rest('/auth/v1/token?grant_type=refresh_token', {method:'POST', body:{refresh_token:refreshTok}});
-    setSession(d); return true;
-  }catch(e){ clearSession(); showAuth(); return false; }
-}
-function setSession(d){
-  token = d.access_token; 
-  if(d.refresh_token){ refreshTok = d.refresh_token; store.set('dhq_rt', refreshTok); }
-}
-function clearSession(){ token=null; refreshTok=null; store.del('dhq_rt'); }
-
-/* ---------- auth UI ---------- */
-const authMsg = document.getElementById('authMsg');
-function showMsg(el, kind, text){ el.className='msg '+kind; el.textContent=text; }
-function showPanel(id){
-  ['signinPanel','forgotPanel','resetPanel'].forEach(p=>document.getElementById(p).classList.toggle('hidden', p!==id));
-}
-function showAuth(){
-  document.getElementById('viewAuth').classList.remove('hidden');
-  document.getElementById('tabs').classList.add('hidden');
-  ['viewProspects','viewDispatch','viewBoard'].forEach(v=>document.getElementById(v).classList.add('hidden'));
-  showPanel('signinPanel');
-}
-function enterApp(){
-  document.getElementById('viewAuth').classList.add('hidden');
-  document.getElementById('tabs').classList.remove('hidden');
-  document.getElementById('viewProspects').classList.remove('hidden');
-  loadAll().catch(e=>alert('Load failed: '+e.message));
-}
-
-async function signIn(){
-  const email = document.getElementById('email').value.trim();
-  const pw = document.getElementById('pw').value;
-  try{
-    const d = await rest('/auth/v1/token?grant_type=password', {method:'POST', body:{email, password:pw}});
-    setSession(d); enterApp();
-  }catch(e){ showMsg(authMsg,'err','Sign-in failed: '+e.message); }
-}
-async function signUp(){
-  const email = document.getElementById('email').value.trim();
-  const pw = document.getElementById('pw').value;
-  if(pw.length < 6){ showMsg(authMsg,'err','Password needs at least 6 characters.'); return; }
-  try{
-    const d = await rest('/auth/v1/signup', {method:'POST', body:{email, password:pw}});
-    if(d.access_token){ setSession(d); showMsg(authMsg,'ok','Account created. Signing you in…'); setTimeout(enterApp, 400); }
-    else showMsg(authMsg,'ok','Account created. Check your email for the confirmation link, then sign in here.');
-  }catch(e){ showMsg(authMsg,'err','Sign-up failed: '+e.message); }
-}
-async function sendReset(){
-  const email = document.getElementById('fEmail').value.trim();
-  const fm = document.getElementById('forgotMsg');
-  if(!email) return showMsg(fm,'err','Enter your email first.');
-  try{
-    await rest('/auth/v1/recover', {method:'POST', body:{email}});
-    showMsg(fm,'ok','Reset link sent. Open the email on this phone — the link brings you back here to set a new password.');
-  }catch(e){ showMsg(fm,'err','Could not send: '+e.message); }
-}
-async function setNewPassword(){
-  const p1 = document.getElementById('newPw').value;
-  const p2 = document.getElementById('newPw2').value;
-  const rm = document.getElementById('resetMsg');
-  if(p1.length < 6) return showMsg(rm,'err','Password needs at least 6 characters.');
-  if(p1 !== p2) return showMsg(rm,'err','Passwords don\u2019t match.');
-  try{
-    await rest('/auth/v1/user', {method:'PUT', body:{password:p1}});
-    showMsg(rm,'ok','Password updated. Taking you in…');
-    if(refreshTok) store.set('dhq_rt', refreshTok);
-    setTimeout(enterApp, 600);
-  }catch(e){ showMsg(rm,'err','Failed: '+e.message); }
-}
-
-/* ---------- boot: handle recovery links + stored sessions ---------- */
 async function boot(){
-  const hash = new URLSearchParams(location.hash.replace(/^#/,''));
-  if(hash.get('access_token') && hash.get('type')==='recovery'){
-    token = hash.get('access_token');
-    refreshTok = hash.get('refresh_token') || null;
-    history.replaceState(null, '', location.pathname);
-    document.getElementById('viewAuth').classList.remove('hidden');
-    showPanel('resetPanel');
-    return;
-  }
-  if(hash.get('access_token')){ // e.g. email confirmation redirect
-    token = hash.get('access_token');
-    refreshTok = hash.get('refresh_token') || null;
-    if(refreshTok) store.set('dhq_rt', refreshTok);
-    history.replaceState(null, '', location.pathname);
-    enterApp(); return;
-  }
-  const rt = store.get('dhq_rt');
-  if(rt){
-    refreshTok = rt;
-    const ok = await tryRefresh();
-    if(ok){ enterApp(); return; }
-  }
-  showAuth();
+  sb=window.supabase.createClient(SB_URL,SB_KEY);
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){show('login');return}
+  await gate(session);
 }
+function show(id){['login','pending','app'].forEach(x=>$(x).style.display=x===id?'block':'none')}
+async function gate(session){
+  me.uid=session.user.id; me.email=session.user.email;
+  const {data:role}=await sb.rpc('dhq_role');
+  if(!role||role==='pending'){show('pending');return}
+  me.role=role;
+  const {data:scope}=await sb.rpc('dhq_jobs_scope'); me.scope=scope||'all';
+  $('who').innerHTML=esc(me.email)+' · '+esc(me.role)+' · <a href="#" onclick="signOut();return false">sign out</a>';
+  show('app'); buildNav(); await loadAll(); render();
+}
+function toggleMode(){signup=!signup;$('lt').textContent=signup?'Create account':'Sign in';
+ $('lfn').style.display=signup?'block':'none';
+ $('lmode').textContent=signup?'Have an account? Sign in':'New hire? Create account'}
+async function doAuth(){
+  $('lerr').textContent='';
+  const email=$('lem').value.trim(),pw=$('lpw').value;
+  if(signup){
+    const {data,error}=await sb.auth.signUp({email,password:pw});
+    if(error){$('lerr').textContent=error.message;return}
+    if(data.user){try{await sb.from('dispatch_staff').insert({user_id:data.user.id,email,full_name:$('lfn').value.trim(),role:'pending'})}catch(e){}}
+    const {data:{session}}=await sb.auth.getSession();
+    if(session)await gate(session); else $('lerr').textContent='Check your email to confirm, then sign in.';
+  }else{
+    const {error}=await sb.auth.signInWithPassword({email,password:pw});
+    if(error){$('lerr').textContent=error.message;return}
+    const {data:{session}}=await sb.auth.getSession(); await gate(session);
+  }
+}
+async function signOut(){await sb.auth.signOut();location.reload()}
 
-/* ---------- data ---------- */
+function buildNav(){
+  const owner=me.role==='owner';
+  let h=['command','pipeline','jobs','techs','metrics'].map(v=>
+    '<button id="nv-'+v+'" onclick="go(\''+v+'\')">'+v+'</button>').join('');
+  if(owner)h+='<button id="nv-team" onclick="go(\'team\')">Team</button>'+
+              '<button id="nv-settings" onclick="go(\'settings\')">Settings</button>';
+  h+='<a class="ext" href="radar.html">Radar</a><a class="ext" href="docs.html">Docs</a>';
+  $('nav').innerHTML=h; markNav();
+}
+function markNav(){document.querySelectorAll('nav.main button').forEach(b=>b.classList.remove('on'));
+  const b=$('nv-'+view); if(b)b.classList.add('on')}
+function go(v){view=v;markNav();render()}
+
 async function loadAll(){
-  [facilities, techs, dispatches, outreach] = await Promise.all([
-    rest('/rest/v1/facilities?select=*&order=name.asc'),
-    rest('/rest/v1/techs?select=*&order=name.asc'),
-    rest('/rest/v1/dispatches?select=*&order=created_at.desc'),
-    rest('/rest/v1/outreach_log?select=*')
-  ]);
-  const rank = {HOT:0, WARM:1, STANDARD:2, STRATEGIC:3};
-  facilities.sort((a,b)=> (rank[a.priority]-rank[b.priority]) || a.name.localeCompare(b.name));
-  renderAll();
+  const q=[
+    sb.from('facilities').select('*'),
+    sb.from('techs').select('*'),
+    sb.from('dispatches').select('*').order('created_at',{ascending:false}),
+    sb.from('outreach_log').select('*').order('contacted_at',{ascending:false}).limit(400),
+    sb.from('app_settings').select('*').eq('key','booking_fee_usd')
+  ];
+  if(me.role==='owner')q.push(sb.from('dispatch_staff').select('*'));
+  const r=await Promise.all(q);
+  F=r[0].data||[]; T=r[1].data||[]; D=r[2].data||[]; O=r[3].data||[];
+  FEE=parseFloat((r[4].data?.[0]?.value)||'89');
+  if(me.role==='owner')STAFF=r[5].data||[];
 }
-function renderAll(){ renderHeader(); renderProspects(); renderDispatchForm(); renderWOs(); renderBoard(); }
+async function refresh(){await loadAll();render()}
+const fac=id=>F.find(f=>f.id===id)||{}; const tech=id=>T.find(t=>t.id===id)||{};
 
-function renderHeader(){
-  document.getElementById('hCalls').textContent = outreach.length;
-  document.getElementById('hVOF').textContent = facilities.filter(f=>f.vendor_on_file).length;
-  document.getElementById('hDisp').textContent = dispatches.filter(d=>d.status!=='cancelled').length;
-  const fees = dispatches.filter(d=>d.fee_collected).reduce((s,d)=>s+Number(d.coordination_fee_usd||0),0);
-  document.getElementById('hFees').textContent = fees.toFixed(0);
+function render(){
+  const v=$('view');
+  if(view==='command')v.innerHTML=rCommand();
+  else if(view==='pipeline')v.innerHTML=rPipeline();
+  else if(view==='jobs')v.innerHTML=rJobs();
+  else if(view==='techs')v.innerHTML=rTechs();
+  else if(view==='metrics')v.innerHTML=rMetrics();
+  else if(view==='team')v.innerHTML=rTeam();
+  else if(view==='settings')v.innerHTML=rSettings();
 }
-
-/* ---------- prospects ---------- */
-const STATUSES = [['not_called','Not called'],['no_answer','No answer'],['spoke','Spoke'],['vendor_on_file','Vendor on file ✓'],['declined','Declined'],['client','CLIENT 🎉']];
-function renderProspects(){
-  const q = (document.getElementById('searchBox').value||'').toLowerCase();
-  const list = document.getElementById('prospectList');
-  const rows = facilities.filter(f => !q || (f.name+' '+(f.city||'')+' '+(f.contact_name||'')).toLowerCase().includes(q));
-  list.innerHTML = rows.map(f => `
-    <div class="card" data-fid="${f.id}">
-      <div class="rowtop">
-        <div><div class="fname">${esc(f.name)}</div><div class="fcity">${esc(f.city||'')}</div>
-        ${f.contact_name?`<div class="contact">Ask for: ${esc(f.contact_name)}</div>`:''}</div>
-        <span class="chip ${f.priority}">${f.priority}</span>
-      </div>
-      ${f.fit_notes?`<div class="fnote">${esc(f.fit_notes)}</div>`:''}
-      <div class="frow">
-        ${f.phone?`<a class="tel" href="tel:${f.phone.replace(/[^0-9+]/g,'')}">📞 ${esc(f.phone)}</a>`:''}
-        <select class="statusSel">${STATUSES.map(([v,l])=>`<option value="${v}" ${f.call_status===v?'selected':''}>${l}</option>`).join('')}</select>
-      </div>
-      ${f.call_status!=='not_called'?`<div class="laststatus">Status: ${esc(f.call_status.replace(/_/g,' '))}${f.vendor_on_file?' · number saved ✓':''}</div>`:''}
-      <details class="logbox">
-        <summary>Log a call / visit</summary>
-        <label>Channel</label>
-        <select class="logChannel"><option value="call">Call</option><option value="sms">SMS</option><option value="walk_in">Walk-in</option><option value="email">Email</option><option value="other">Other</option></select>
-        <label>Spoke with</label><input class="logWho" placeholder="Name / role">
-        <label>Outcome</label><input class="logOutcome" placeholder="e.g. Saved my number, wants follow-up in fall">
-        <label>Pain points heard (validation gold)</label><textarea class="logPain" rows="2" placeholder="Who do they call now? How slow? What broke last?"></textarea>
-        <label>Current vendor</label><input class="logVendor" placeholder="e.g. 'a gate guy from Denton'">
-        <button class="btn-main btn-sm logSave" style="margin-top:12px;">Save log</button>
-      </details>
-    </div>`).join('') || '<div class="empty">No matches.</div>';
+function kpis(){
+  const today=new Date().toISOString().slice(0,10);
+  const callsToday=O.filter(o=>(o.contacted_at||'').slice(0,10)===today).length;
+  const convos=F.filter(f=>CONVO.includes(f.call_status)).length;
+  const active=D.filter(d=>!['approved','cancelled'].includes(d.status)).length;
+  const earned=D.filter(d=>d.status==='approved').reduce((s,d)=>s+(+d.coordination_fee_usd||0),0);
+  return {callsToday,convos,active,earned};
 }
-
-document.getElementById('searchBox').addEventListener('input', renderProspects);
-
-document.getElementById('prospectList').addEventListener('change', async (e)=>{
-  if(!e.target.classList.contains('statusSel')) return;
-  const card = e.target.closest('[data-fid]'); const id = card.dataset.fid;
-  const val = e.target.value;
-  const patch = {call_status: val};
-  if(val==='vendor_on_file' || val==='client') patch.vendor_on_file = true;
-  try{
-    await rest(`/rest/v1/facilities?id=eq.${id}`, {method:'PATCH', body:patch});
-    const f = facilities.find(x=>x.id===id); Object.assign(f, patch);
-    renderHeader(); renderBoard();
-  }catch(err){ alert('Save failed: '+err.message); }
-});
-
-document.getElementById('prospectList').addEventListener('click', async (e)=>{
-  if(!e.target.classList.contains('logSave')) return;
-  const card = e.target.closest('[data-fid]'); const id = card.dataset.fid;
-  const get = c => card.querySelector(c).value.trim();
-  const entry = {facility_id:id, channel:get('.logChannel'), spoke_with:get('.logWho')||null,
-                 outcome:get('.logOutcome')||null, pain_points:get('.logPain')||null, notes:null};
-  try{
-    await rest('/rest/v1/outreach_log', {method:'POST', body:entry, prefer:'return=representation'});
-    const vendor = get('.logVendor');
-    const fpatch = {};
-    if(entry.pain_points) fpatch.pain_points = entry.pain_points;
-    if(vendor) fpatch.current_vendor = vendor;
-    if(Object.keys(fpatch).length) await rest(`/rest/v1/facilities?id=eq.${id}`, {method:'PATCH', body:fpatch});
-    outreach.push(entry);
-    const f = facilities.find(x=>x.id===id); Object.assign(f, fpatch);
-    e.target.textContent = 'Saved ✓'; setTimeout(()=>{e.target.textContent='Save log';},1500);
-    renderHeader(); renderBoard();
-  }catch(err){ alert('Save failed: '+err.message); }
-});
-
-/* ---------- dispatches ---------- */
-function renderDispatchForm(){
-  document.getElementById('ndFacility').innerHTML =
-    facilities.map(f=>`<option value="${f.id}">${esc(f.name)} — ${esc(f.city||'')}</option>`).join('');
-  document.getElementById('ndTech').innerHTML =
-    '<option value="">— unassigned —</option>' +
-    techs.map(t=>`<option value="${t.id}">${esc(t.name)}${t.company?' · '+esc(t.company):''}</option>`).join('');
+function rCommand(){
+  const k=kpis();
+  const due=F.filter(f=>['not_called','no_answer'].includes(f.call_status)||
+    (f.follow_up_date&&f.follow_up_date<=new Date().toISOString().slice(0,10)&&f.call_status!=='client'))
+    .sort((a,b)=>((a.follow_up_date||'9')> (b.follow_up_date||'9')?1:-1)||(PRI_ORD[a.priority]-PRI_ORD[b.priority])).slice(0,25);
+  const act=D.filter(d=>!['approved','cancelled'].includes(d.status));
+  return '<div class="kpis">'+
+    '<div class="kpi"><div class="n">'+k.callsToday+'</div><div class="l">Calls today</div></div>'+
+    '<div class="kpi"><div class="n">'+k.convos+'<span style="font-size:13px;color:var(--dim)">/20</span></div><div class="l">Conversations</div><div class="bar"><i style="width:'+Math.min(100,k.convos*5)+'%"></i></div></div>'+
+    '<div class="kpi"><div class="n">'+k.active+'</div><div class="l">Active jobs</div></div>'+
+    '<div class="kpi"><div class="n">$'+k.earned.toFixed(0)+'</div><div class="l">Fees approved</div></div></div>'+
+    '<h2 class="sec">Call queue</h2>'+
+    (due.length?due.map(cardFac).join(''):'<div class="empty">Queue clear. Check Radar for new leads.</div>')+
+    '<h2 class="sec">Active jobs</h2>'+
+    (act.length?act.map(cardJob).join(''):'<div class="empty">No active dispatches.</div>')+
+    '<button class="b go fab" onclick="openNewJob()">+ New Dispatch</button>';
 }
-document.getElementById('btnAddTech').addEventListener('click', async ()=>{
-  const name = document.getElementById('ntName').value.trim();
-  if(!name) return alert('Tech needs a name.');
-  try{
-    const rows = await rest('/rest/v1/techs', {method:'POST', prefer:'return=representation',
-      body:{name, company:document.getElementById('ntCompany').value.trim()||null, phone:document.getElementById('ntPhone').value.trim()||null}});
-    techs.push(rows[0]); renderDispatchForm();
-    document.getElementById('ndTech').value = rows[0].id;
-    ['ntName','ntCompany','ntPhone'].forEach(i=>document.getElementById(i).value='');
-  }catch(err){ alert('Save failed: '+err.message); }
-});
-document.getElementById('btnNewDispatch').addEventListener('click', async ()=>{
-  const issue = document.getElementById('ndIssue').value.trim();
-  const ndMsg = document.getElementById('ndMsg');
-  if(!issue) return showMsg(ndMsg,'err','Describe the issue first.');
-  try{
-    const rows = await rest('/rest/v1/dispatches', {method:'POST', prefer:'return=representation', body:{
-      facility_id: document.getElementById('ndFacility').value,
-      tech_id: document.getElementById('ndTech').value || null,
-      equipment_kind: document.getElementById('ndKind').value,
-      issue, coordination_fee_usd: Number(document.getElementById('ndFee').value||89)
-    }});
-    dispatches.unshift(rows[0]);
-    document.getElementById('ndIssue').value='';
-    showMsg(ndMsg,'ok','Work order created.');
-    renderWOs(); renderHeader(); renderBoard();
-  }catch(err){ showMsg(ndMsg,'err','Failed: '+err.message); }
-});
-
-const NEXT = {requested:['dispatched','Mark dispatched'], dispatched:['on_site','Tech on site'], on_site:['completed','Mark completed'], completed:['approved','Client approved ✓']};
-function woNum(d){ return 'WO-'+String(dispatches.length - dispatches.indexOf(d)).padStart(4,'0'); }
-function renderWOs(){
-  const list = document.getElementById('woList');
-  if(!dispatches.length){ list.innerHTML='<div class="empty">No work orders yet. Your first gate call starts here.</div>'; return; }
-  list.innerHTML = dispatches.map(d=>{
-    const f = facilities.find(x=>x.id===d.facility_id)||{};
-    const t = techs.find(x=>x.id===d.tech_id);
-    const nxt = NEXT[d.status];
-    return `<div class="wo" data-did="${d.id}">
-      <div class="perf"></div>
-      <div class="body">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span class="woid">${woNum(d)} · ${new Date(d.created_at).toLocaleDateString()}</span>
-          <span class="stamp st-${d.status}">${d.status.replace('_',' ')}</span>
-        </div>
-        <div class="issue">${esc(d.issue)}</div>
-        <div class="meta">${esc(f.name||'?')} · ${esc(d.equipment_kind.replace('_',' '))}${t?' · Tech: '+esc(t.name):''}</div>
-        <div class="fees">Coordination: $${Number(d.coordination_fee_usd).toFixed(2)} ${d.fee_collected?'✓ collected':'(unpaid)'}${d.repair_cost_usd?' · Repair: $'+Number(d.repair_cost_usd).toFixed(2)+' (paid direct to tech)':''}</div>
-        ${d.status==='completed'||d.status==='approved' ? metricsRow(d) : ''}
-        <div class="advance">
-          ${nxt?`<button class="btn-sm nextBtn" data-next="${nxt[0]}">${nxt[1]}</button>`:''}
-          ${!d.fee_collected && d.status!=='cancelled'?`<button class="btn-sm feeBtn" style="background:var(--ok);color:#fff;">Fee collected</button>`:''}
-          ${d.status!=='approved'&&d.status!=='cancelled'?`<button class="btn-sm cancelbtn cancelBtn">Cancel</button>`:''}
-        </div>
-      </div>
-    </div>`;
-  }).join('');
+function cardFac(f){
+  return '<div class="card" onclick="openFac(\''+f.id+'\')"><div class="r1">'+
+   '<span class="pri '+esc(f.priority)+'">'+esc(f.priority)+'</span><span class="nm">'+esc(f.name)+'</span>'+
+   '<span class="rt">'+(f.follow_up_date?('follow up '+fmt(f.follow_up_date)):esc(f.call_status.replace('_',' ')))+'</span></div>'+
+   '<div class="meta">'+(f.phone?'<a href="tel:'+esc(f.phone)+'" onclick="event.stopPropagation()">'+esc(f.phone)+'</a> · ':'')+
+   esc(f.city||'')+(f.pain_points?' · '+esc(f.pain_points.slice(0,70)):'')+'</div></div>';
 }
-function metricsRow(d){
-  return `<div class="completeform">
-    <div style="font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;">Scorecard (feeds the app)</div>
-    <div class="togglerow">
-      <button class="mBtn ${d.on_time===true?'sel':''} ${d.on_time===false?'selno':''}" data-field="on_time">On time: ${d.on_time===true?'YES':d.on_time===false?'NO':'?'}</button>
-      <button class="mBtn ${d.first_try_approval===true?'sel':''} ${d.first_try_approval===false?'selno':''}" data-field="first_try_approval">First-try fix: ${d.first_try_approval===true?'YES':d.first_try_approval===false?'NO':'?'}</button>
-    </div>
-    <label>Repair cost (tech billed facility directly)</label>
-    <input class="repairCost" type="number" inputmode="decimal" value="${d.repair_cost_usd??''}" placeholder="e.g. 340">
-    <button class="btn-ghost btn-sm saveCost" style="margin-top:8px;">Save cost</button>
-  </div>`;
+function cardJob(d){
+  const f=fac(d.facility_id),t=tech(d.tech_id);
+  return '<div class="card" onclick="openJob(\''+d.id+'\')"><div class="r1">'+
+   '<span class="st '+esc(d.status)+'">'+esc(d.status.replace('_',' '))+'</span><span class="nm">'+esc(f.name||'?')+'</span>'+
+   '<span class="rt">$'+(+d.coordination_fee_usd||0).toFixed(0)+(d.fee_collected?' ✓':'')+'</span></div>'+
+   '<div class="meta">'+esc(d.equipment_kind)+' · '+esc(t.name||'unassigned')+(d.issue?' · '+esc(d.issue.slice(0,60)):'')+'</div></div>';
 }
-document.getElementById('woList').addEventListener('click', async (e)=>{
-  const wo = e.target.closest('[data-did]'); if(!wo) return;
-  const id = wo.dataset.did; const d = dispatches.find(x=>x.id===id);
-  try{
-    if(e.target.classList.contains('nextBtn')){
-      const next = e.target.dataset.next;
-      const patch = {status:next};
-      if(next==='dispatched') patch.dispatched_at = new Date().toISOString();
-      if(next==='completed') patch.completed_at = new Date().toISOString();
-      await rest(`/rest/v1/dispatches?id=eq.${id}`, {method:'PATCH', body:patch});
-      Object.assign(d, patch); renderWOs(); renderHeader(); renderBoard();
-    } else if(e.target.classList.contains('feeBtn')){
-      await rest(`/rest/v1/dispatches?id=eq.${id}`, {method:'PATCH', body:{fee_collected:true}});
-      d.fee_collected = true; renderWOs(); renderHeader(); renderBoard();
-    } else if(e.target.classList.contains('cancelBtn')){
-      if(!confirm('Cancel this work order?')) return;
-      await rest(`/rest/v1/dispatches?id=eq.${id}`, {method:'PATCH', body:{status:'cancelled'}});
-      d.status='cancelled'; renderWOs(); renderHeader(); renderBoard();
-    } else if(e.target.classList.contains('mBtn')){
-      const field = e.target.dataset.field;
-      const cur = d[field]; const next = cur===true ? false : cur===false ? null : true;
-      await rest(`/rest/v1/dispatches?id=eq.${id}`, {method:'PATCH', body:{[field]:next}});
-      d[field]=next; renderWOs(); renderBoard();
-    } else if(e.target.classList.contains('saveCost')){
-      const v = wo.querySelector('.repairCost').value;
-      const cost = v===''?null:Number(v);
-      await rest(`/rest/v1/dispatches?id=eq.${id}`, {method:'PATCH', body:{repair_cost_usd:cost}});
-      d.repair_cost_usd = cost; renderWOs();
-    }
-  }catch(err){ alert('Save failed: '+err.message); }
-});
-
-/* ---------- board ---------- */
-function renderBoard(){
-  const convos = outreach.filter(o=>o.channel==='call'||o.channel==='walk_in').length;
-  document.getElementById('killCount').textContent = convos;
-  document.getElementById('killFill').style.width = Math.min(100, convos/20*100)+'%';
-  document.getElementById('bVOF').textContent = facilities.filter(f=>f.vendor_on_file).length;
-  document.getElementById('bClients').textContent = facilities.filter(f=>f.call_status==='client').length;
-  const live = dispatches.filter(d=>d.status!=='cancelled');
-  document.getElementById('bDisp').textContent = live.length;
-  const fees = dispatches.filter(d=>d.fee_collected).reduce((s,d)=>s+Number(d.coordination_fee_usd||0),0);
-  document.getElementById('bFees').textContent = '$'+fees.toFixed(0);
-  const tb = document.getElementById('techBoard');
-  const done = live.filter(d=>d.tech_id && (d.status==='completed'||d.status==='approved'));
-  if(!done.length){ tb.innerHTML='<div class="empty">No completed dispatches yet — scores appear after your first approved work order.</div>'; return; }
-  const byTech = {};
-  done.forEach(d=>{ (byTech[d.tech_id]=byTech[d.tech_id]||[]).push(d); });
-  tb.innerHTML = Object.entries(byTech).map(([tid, ds])=>{
-    const t = techs.find(x=>x.id===tid)||{name:'?'};
-    const pct = (arr,f)=> { const known = arr.filter(d=>d[f]!==null); return known.length? Math.round(100*known.filter(d=>d[f]).length/known.length)+'%' : '—'; };
-    return `<div class="techline"><strong>${esc(t.name)}</strong>
-      <span class="mono">${ds.length} jobs · first-try ${pct(ds,'first_try_approval')} · on-time ${pct(ds,'on_time')}</span></div>`;
-  }).join('');
+function rPipeline(){
+  const groups=['queue','not_called','no_answer','spoke','vendor_on_file','declined','client'];
+  const lbl={queue:'Queue',not_called:'Not called',no_answer:'No answer',spoke:'Spoke',vendor_on_file:'Vendor on file',declined:'Declined',client:'CLIENT'};
+  let list=F.slice();
+  if(pipeFilter==='queue')list=list.filter(f=>['not_called','no_answer'].includes(f.call_status));
+  else list=list.filter(f=>f.call_status===pipeFilter);
+  list.sort((a,b)=>PRI_ORD[a.priority]-PRI_ORD[b.priority]||a.name.localeCompare(b.name));
+  return '<div class="chips">'+groups.map(g=>{
+    const n=g==='queue'?F.filter(f=>['not_called','no_answer'].includes(f.call_status)).length:F.filter(f=>f.call_status===g).length;
+    return '<button class="'+(pipeFilter===g?'on':'')+'" onclick="pipeFilter=\''+g+'\';render()">'+lbl[g]+' '+n+'</button>'}).join('')+'</div>'+
+    (list.length?list.map(cardFac).join(''):'<div class="empty">Nothing here.</div>');
+}
+function rJobs(){
+  const filters=['active','requested','dispatched','on_site','completed','approved','cancelled','all'];
+  let list=D.slice();
+  if(jobFilter==='active')list=list.filter(d=>!['approved','cancelled'].includes(d.status));
+  else if(jobFilter!=='all')list=list.filter(d=>d.status===jobFilter);
+  return '<div class="chips">'+filters.map(x=>'<button class="'+(jobFilter===x?'on':'')+
+   '" onclick="jobFilter=\''+x+'\';render()">'+x.replace('_',' ')+'</button>').join('')+'</div>'+
+   (list.length?list.map(cardJob).join(''):'<div class="empty">No jobs.</div>')+
+   '<button class="b go fab" onclick="openNewJob()">+ New Dispatch</button>';
+}
+function rTechs(){
+  return '<div class="note">Dispatch guard is live: jobs physically can\'t be assigned to a tech whose docs don\'t cover the work. Recruit new techs in <a href="radar.html" style="color:var(--hazard)">Radar</a>.</div>'+
+   (T.length?T.map(t=>{
+     const gateOk=!!t.is_active&&t.coi_expires_on&&t.coi_expires_on>=new Date().toISOString().slice(0,10);
+     const licOk=gateOk&&t.dps_license_number&&t.tops_verified_on&&
+       (new Date()-new Date(t.tops_verified_on))/864e5<=90&&(!t.dps_license_expires_on||t.dps_license_expires_on>=new Date().toISOString().slice(0,10));
+     return '<div class="card" onclick="openTech(\''+t.id+'\')"><div class="r1"><span class="nm">'+esc(t.name)+'</span>'+
+      (t.is_active?'':'<span class="st">inactive</span>')+
+      '<span class="rt">gate '+(gateOk?'<span class="ok">✓</span>':'<span class="no">✗</span>')+
+      ' · licensed '+(licOk?'<span class="ok">✓</span>':'<span class="no">✗</span>')+'</span></div>'+
+      '<div class="meta">'+(t.phone?'<a href="tel:'+esc(t.phone)+'" onclick="event.stopPropagation()">'+esc(t.phone)+'</a> · ':'')+
+      esc((t.trades||[]).join(', '))+(t.company&&t.company!==t.name?' · '+esc(t.company):'')+'</div></div>'})
+    .join(''):'<div class="empty">No techs yet — open Radar → Techs and start recruiting.</div>');
+}
+function rMetrics(){
+  const k=kpis();
+  const byStatus=s=>D.filter(d=>d.status===s).length;
+  const done=D.filter(d=>['completed','approved'].includes(d.status));
+  const ot=done.filter(d=>d.on_time===true).length, ft=done.filter(d=>d.first_try_approval===true).length;
+  const collected=D.filter(d=>d.fee_collected).reduce((s,d)=>s+(+d.coordination_fee_usd||0),0);
+  return '<div class="kpis">'+
+   '<div class="kpi"><div class="n">'+k.convos+'/20</div><div class="l">Kill-criteria conversations</div><div class="bar"><i style="width:'+Math.min(100,k.convos*5)+'%"></i></div></div>'+
+   '<div class="kpi"><div class="n">'+O.length+'</div><div class="l">Outreach touches</div></div>'+
+   '<div class="kpi"><div class="n">'+F.filter(f=>f.call_status==='client').length+'</div><div class="l">Clients</div></div>'+
+   '<div class="kpi"><div class="n">$'+collected.toFixed(0)+'</div><div class="l">Fees collected</div></div></div>'+
+   '<h2 class="sec">Dispatch funnel</h2><table class="t"><tr><th>Status</th><th>Count</th></tr>'+
+   ['requested','dispatched','on_site','completed','approved','cancelled'].map(s=>'<tr><td>'+s.replace('_',' ')+'</td><td>'+byStatus(s)+'</td></tr>').join('')+'</table>'+
+   '<h2 class="sec">Tech performance ('+done.length+' finished jobs)</h2>'+
+   '<div class="kpis"><div class="kpi"><div class="n">'+(done.length?Math.round(ot/done.length*100):0)+'%</div><div class="l">On-time</div></div>'+
+   '<div class="kpi"><div class="n">'+(done.length?Math.round(ft/done.length*100):0)+'%</div><div class="l">First-try approval</div></div></div>';
+}
+function rTeam(){
+  return (STAFF.length?'<table class="t"><tr><th>Name</th><th>Role</th><th>Scope</th><th></th></tr>'+
+   STAFF.map(s=>'<tr><td>'+esc(s.full_name||s.email)+(s.is_primary?' ★':'')+'</td><td>'+esc(s.role)+'</td>'+
+    '<td>'+esc(s.jobs_scope)+'</td><td>'+(s.is_primary?'':(
+     (s.role==='pending'?'<button class="b" onclick="setRole(\''+s.user_id+'\',\'employee\')">Approve</button> <button class="b" onclick="setRole(\''+s.user_id+'\',\'owner\')">Full access</button>':
+      '<button class="b" onclick="setScope(\''+s.user_id+'\',\''+(s.jobs_scope==='all'?'assigned':'all')+'\')">Scope: '+(s.jobs_scope==='all'?'assigned only':'all jobs')+'</button> '+
+      '<button class="b warn" onclick="dropStaff(\''+s.user_id+'\')">Remove</button>')))+'</td></tr>').join('')+'</table>'
+   :'<div class="empty">Just you. New hires appear here after they create an account.</div>');
+}
+function rSettings(){
+  return '<label>Coordination fee (USD)</label><div class="row"><input id="feeIn" type="number" value="'+FEE+'">'+
+   '<button class="b go" onclick="saveFee()">Save</button></div>'+
+   '<div class="note">Fee auto-fills on every new dispatch. Docs kit: <a href="docs.html" style="color:var(--hazard)">agreements &amp; invoice</a>.</div>';
 }
 
-/* ---------- tabs, sign out, PWA install, utils ---------- */
-document.getElementById('tabs').addEventListener('click', (e)=>{
-  const btn = e.target.closest('button[data-tab]'); if(!btn) return;
-  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b===btn));
-  ['viewProspects','viewDispatch','viewBoard'].forEach(v=>document.getElementById(v).classList.toggle('hidden', v!==btn.dataset.tab));
-});
-document.getElementById('btnSignOut').addEventListener('click', ()=>{ clearSession(); location.reload(); });
-function esc(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-document.getElementById('btnSignIn').addEventListener('click', signIn);
-document.getElementById('btnSignUp').addEventListener('click', signUp);
-document.getElementById('btnForgot').addEventListener('click', ()=>showPanel('forgotPanel'));
-document.getElementById('btnBackToSignin').addEventListener('click', ()=>showPanel('signinPanel'));
-document.getElementById('btnSendReset').addEventListener('click', sendReset);
-document.getElementById('btnSetPw').addEventListener('click', setNewPassword);
-document.getElementById('pw').addEventListener('keydown', e=>{ if(e.key==='Enter') signIn(); });
+function openDrawer(html){$('drawer').innerHTML=html;$('drawer').classList.add('open');$('scrim').classList.add('open')}
+function closeDrawer(){$('drawer').classList.remove('open');$('scrim').classList.remove('open')}
+function dh(t){return '<div class="dh"><span class="t">'+t+'</span><button class="x" onclick="closeDrawer()">×</button></div>'}
 
-/* installable-app manifest (generated at runtime; lets Android "Add to Home screen" open standalone) */
-(function(){
-  const icon = 'data:image/svg+xml,' + encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512"><rect width="512" height="512" rx="96" fill="#1B2733"/><rect y="416" width="512" height="40" fill="#FF6B1A"/><text x="256" y="300" font-family="Arial,Helvetica,sans-serif" font-size="200" font-weight="800" fill="#FF6B1A" text-anchor="middle">HQ</text></svg>');
-  const manifest = {
-    name: 'Dispatch HQ', short_name: 'DispatchHQ', start_url: location.pathname || '.',
-    display: 'standalone', background_color: '#EEF1F4', theme_color: '#1B2733',
-    icons: [{src: icon, sizes: '512x512', type: 'image/svg+xml', purpose: 'any'}]
-  };
-  const link = document.createElement('link');
-  link.rel = 'manifest';
-  link.href = URL.createObjectURL(new Blob([JSON.stringify(manifest)], {type:'application/json'}));
-  document.head.appendChild(link);
-})();
+function openFac(id){
+  const f=fac(id);
+  openDrawer(dh(esc(f.name))+
+   '<div class="meta" style="margin-bottom:8px">'+(f.phone?'<a href="tel:'+esc(f.phone)+'" class="b go" style="text-decoration:none;display:inline-block;margin-right:6px">📞 Call</a>':'')+
+   '<button class="b" onclick="openNewJob(\''+id+'\')">+ Dispatch here</button></div>'+
+   '<div class="row"><div><label>Status</label><select id="f_cs">'+
+   ['not_called','no_answer','spoke','vendor_on_file','declined','client'].map(s=>'<option '+(f.call_status===s?'selected':'')+'>'+s+'</option>').join('')+
+   '</select></div><div><label>Priority</label><select id="f_pr">'+
+   ['HOT','WARM','STANDARD','STRATEGIC'].map(s=>'<option '+(f.priority===s?'selected':'')+'>'+s+'</option>').join('')+'</select></div>'+
+   '<div><label>Follow up</label><input id="f_fu" type="date" value="'+(f.follow_up_date||'')+'"></div></div>'+
+   '<label>Contact</label><input id="f_ct" value="'+esc(f.contact_name||'')+'">'+
+   '<label>Current vendor</label><input id="f_cv" value="'+esc(f.current_vendor||'')+'">'+
+   '<label>Pain points</label><textarea id="f_pp" rows="2">'+esc(f.pain_points||'')+'</textarea>'+
+   '<label>Notes</label><textarea id="f_no" rows="2">'+esc(f.notes||'')+'</textarea>'+
+   '<button class="b go" onclick="saveFac(\''+id+'\')">Save</button>'+
+   '<h2 class="sec">Log outreach</h2><div class="row"><div><label>Channel</label><select id="o_ch">'+
+   ['call','sms','walk_in','email','other'].map(c=>'<option>'+c+'</option>').join('')+'</select></div>'+
+   '<div><label>Spoke with</label><input id="o_sw"></div></div>'+
+   '<label>Outcome</label><input id="o_oc" placeholder="e.g. interested, callback Tue, has vendor">'+
+   '<label>Notes</label><textarea id="o_no" rows="2"></textarea>'+
+   '<button class="b go" onclick="logOutreach(\''+id+'\')">Log it</button>'+
+   '<h2 class="sec">History</h2>'+
+   O.filter(o=>o.facility_id===id).slice(0,6).map(o=>'<div class="mut" style="margin-bottom:5px">'+
+     fmt(o.contacted_at)+' · '+esc(o.channel)+(o.spoke_with?' · '+esc(o.spoke_with):'')+(o.outcome?' — '+esc(o.outcome):'')+'</div>').join('')||'');
+}
+async function saveFac(id){
+  const {error}=await sb.from('facilities').update({call_status:$('f_cs').value,priority:$('f_pr').value,
+   follow_up_date:$('f_fu').value||null,contact_name:$('f_ct').value||null,current_vendor:$('f_cv').value||null,
+   pain_points:$('f_pp').value||null,notes:$('f_no').value||null}).eq('id',id);
+  if(error){toast(error.message);return}
+  toast('Saved ✓');closeDrawer();refresh();
+}
+async function logOutreach(id){
+  const {error}=await sb.from('outreach_log').insert({facility_id:id,channel:$('o_ch').value,
+   spoke_with:$('o_sw').value||null,outcome:$('o_oc').value||null,notes:$('o_no').value||null});
+  if(error){toast(error.message);return}
+  if($('o_sw').value&&$('f_cs').value==='not_called')await sb.from('facilities').update({call_status:'spoke'}).eq('id',id);
+  toast('Logged ✓');closeDrawer();refresh();
+}
+function openNewJob(fid){
+  openDrawer(dh('New dispatch')+
+   '<label>Facility</label><select id="j_f">'+F.slice().sort((a,b)=>a.name.localeCompare(b.name))
+    .map(f=>'<option value="'+f.id+'" '+(f.id===fid?'selected':'')+'>'+esc(f.name)+' — '+esc(f.city||'')+'</option>').join('')+'</select>'+
+   '<div class="row"><div><label>Equipment</label><select id="j_k">'+
+   ['gate','keypad','camera','access_control','other'].map(k=>'<option>'+k+'</option>').join('')+'</select></div>'+
+   '<div><label>Tech</label><select id="j_t"><option value="">— pick later —</option>'+
+   T.filter(t=>t.is_active).map(t=>'<option value="'+t.id+'">'+esc(t.name)+'</option>').join('')+'</select></div>'+
+   '<div><label>Fee $</label><input id="j_fee" type="number" value="'+FEE+'"></div></div>'+
+   '<label>Issue</label><textarea id="j_i" rows="2" placeholder="What\'s broken?"></textarea>'+
+   '<button class="b go" onclick="createJob()">Create dispatch</button>'+
+   '<div class="note">If the tech\'s documents don\'t cover this work, the system will refuse the assignment and tell you why.</div>');
+}
+async function createJob(){
+  const row={facility_id:$('j_f').value,equipment_kind:$('j_k').value,issue:$('j_i').value||null,
+   status:'requested',coordination_fee_usd:parseFloat($('j_fee').value)||FEE,assigned_to:me.uid};
+  if($('j_t').value)row.tech_id=$('j_t').value;
+  const {error}=await sb.from('dispatches').insert(row);
+  if(error){toast(error.message);return}
+  toast('Dispatch created ✓');closeDrawer();refresh();
+}
+function openJob(id){
+  const d=D.find(x=>x.id===id); if(!d)return;
+  const f=fac(d.facility_id);
+  const owner=me.role==='owner';
+  const nxt={requested:'dispatched',dispatched:'on_site',on_site:'completed'}[d.status];
+  openDrawer(dh(esc(f.name||'Job'))+
+   '<div class="meta" style="margin-bottom:8px"><span class="st '+esc(d.status)+'">'+esc(d.status.replace('_',' '))+'</span> · '+
+   esc(d.equipment_kind)+' · fee $'+(+d.coordination_fee_usd||0).toFixed(0)+(d.fee_collected?' (collected)':'')+'</div>'+
+   (d.issue?'<div class="mut" style="margin-bottom:8px">'+esc(d.issue)+'</div>':'')+
+   '<label>Tech</label><select id="jd_t"><option value="">— unassigned —</option>'+
+   T.filter(t=>t.is_active||t.id===d.tech_id).map(t=>'<option value="'+t.id+'" '+(t.id===d.tech_id?'selected':'')+'>'+esc(t.name)+'</option>').join('')+'</select>'+
+   '<label>Photo evidence URL</label><input id="jd_ph" value="'+esc(d.photo_evidence_url||'')+'">'+
+   '<label>Notes</label><textarea id="jd_no" rows="2">'+esc(d.notes||'')+'</textarea>'+
+   (['completed'].includes(d.status)&&owner?
+    '<div class="row"><label style="flex:1"><input type="checkbox" id="jd_ot" style="width:auto" '+(d.on_time?'checked':'')+'> On time</label>'+
+    '<label style="flex:1"><input type="checkbox" id="jd_ft" style="width:auto" '+(d.first_try_approval?'checked':'')+'> First-try fix</label>'+
+    '<label style="flex:1"><input type="checkbox" id="jd_fc" style="width:auto" '+(d.fee_collected?'checked':'')+'> Fee collected</label></div>':'')+
+   '<div class="row" style="margin-top:8px">'+
+   '<button class="b" onclick="saveJob(\''+id+'\')">Save</button>'+
+   (nxt?'<button class="b go" onclick="advJob(\''+id+'\',\''+nxt+'\')">→ '+nxt.replace('_',' ')+'</button>':'')+
+   (owner&&d.status==='completed'?'<button class="b go" onclick="advJob(\''+id+'\',\'approved\')">Approve ✓</button>':'')+
+   (owner&&!['approved','cancelled'].includes(d.status)?'<button class="b warn" onclick="advJob(\''+id+'\',\'cancelled\')">Cancel</button>':'')+
+   '</div>');
+}
+async function saveJob(id){
+  const upd={tech_id:$('jd_t').value||null,photo_evidence_url:$('jd_ph').value||null,notes:$('jd_no').value||null};
+  if($('jd_ot'))upd.on_time=$('jd_ot').checked;
+  if($('jd_ft'))upd.first_try_approval=$('jd_ft').checked;
+  if($('jd_fc'))upd.fee_collected=$('jd_fc').checked;
+  const {error}=await sb.from('dispatches').update(upd).eq('id',id);
+  if(error){toast(error.message);return}
+  toast('Saved ✓');closeDrawer();refresh();
+}
+async function advJob(id,st){
+  const upd={status:st};
+  if(st==='dispatched')upd.dispatched_at=new Date().toISOString();
+  if(st==='completed')upd.completed_at=new Date().toISOString();
+  const {error}=await sb.from('dispatches').update(upd).eq('id',id);
+  if(error){toast(error.message);return}
+  toast(st.replace('_',' ')+' ✓');closeDrawer();refresh();
+}
+function openTech(id){
+  const t=T.find(x=>x.id===id); if(!t)return;
+  const trades=t.trades||[];
+  openDrawer(dh(esc(t.name))+
+   '<div class="row"><div><label>Name</label><input id="t_n" value="'+esc(t.name)+'"></div>'+
+   '<div><label>Company</label><input id="t_c" value="'+esc(t.company||'')+'"></div>'+
+   '<div><label>Phone</label><input id="t_p" value="'+esc(t.phone||'')+'"></div></div>'+
+   '<label>Trades</label><div class="row">'+['gate','access_control','camera'].map(x=>
+    '<label style="flex:1"><input type="checkbox" class="t_tr" value="'+x+'" style="width:auto" '+(trades.includes(x)?'checked':'')+'> '+x.replace('_',' ')+'</label>').join('')+'</div>'+
+   '<div class="row"><div><label>GL insurance expires</label><input id="t_coi" type="date" value="'+(t.coi_expires_on||'')+'"></div>'+
+   '<div><label>DPS license #</label><input id="t_dps" value="'+esc(t.dps_license_number||'')+'"></div>'+
+   '<div><label>License expires</label><input id="t_dpx" type="date" value="'+(t.dps_license_expires_on||'')+'"></div></div>'+
+   '<div class="row"><div><label>TOPS verified on</label><input id="t_tv" type="date" value="'+(t.tops_verified_on||'')+'"></div>'+
+   '<div><label>Agreement signed</label><input id="t_ag" type="date" value="'+(t.agreement_signed_on||'')+'"></div></div>'+
+   '<div class="row"><button class="b" onclick="$(\'t_tv\').value=new Date().toISOString().slice(0,10)">Verified in TOPS today</button>'+
+   '<a class="b" style="text-decoration:none;text-align:center" target="_blank" href="https://tops.portal.texas.gov/psp-self-service/search/index">Open TOPS ↗</a></div>'+
+   '<label style="margin-top:6px"><input type="checkbox" id="t_act" style="width:auto" '+(t.is_active?'checked':'')+'> Active (dispatchable)</label>'+
+   '<label>Notes</label><textarea id="t_no" rows="2">'+esc(t.notes||'')+'</textarea>'+
+   '<button class="b go" onclick="saveTech(\''+id+'\')">Save</button>');
+}
+async function saveTech(id){
+  const trades=Array.from(document.querySelectorAll('.t_tr:checked')).map(x=>x.value);
+  const {error}=await sb.from('techs').update({name:$('t_n').value,company:$('t_c').value||null,phone:$('t_p').value||null,
+   trades,coi_expires_on:$('t_coi').value||null,dps_license_number:$('t_dps').value||null,
+   dps_license_expires_on:$('t_dpx').value||null,tops_verified_on:$('t_tv').value||null,
+   agreement_signed_on:$('t_ag').value||null,is_active:$('t_act').checked,notes:$('t_no').value||null}).eq('id',id);
+  if(error){toast(error.message);return}
+  toast('Saved ✓');closeDrawer();refresh();
+}
+async function setRole(uid,role){const {error}=await sb.from('dispatch_staff').update({role}).eq('user_id',uid);
+  if(error){toast(error.message);return} toast('Updated ✓');await loadAll();render()}
+async function setScope(uid,scope){const {error}=await sb.from('dispatch_staff').update({jobs_scope:scope}).eq('user_id',uid);
+  if(error){toast(error.message);return} toast('Updated ✓');await loadAll();render()}
+async function dropStaff(uid){if(!confirm('Remove this person\'s access?'))return;
+  const {error}=await sb.from('dispatch_staff').delete().eq('user_id',uid);
+  if(error){toast(error.message);return} toast('Removed');await loadAll();render()}
+async function saveFee(){const v=$('feeIn').value;
+  const {error}=await sb.from('app_settings').update({value:String(v)}).eq('key','booking_fee_usd');
+  if(error){toast(error.message);return} FEE=parseFloat(v);toast('Fee saved ✓')}
 
 boot();
 </script>
-<script>(function(){function addLinks(){var nav=document.querySelector('nav')||document.querySelector('.nav')||document.querySelector('#nav')||document.querySelector('.tabs')||document.querySelector('.topbar');if(!nav||nav.dataset.radarLinked)return false;var items=nav.querySelectorAll('a,button');if(!items.length)return false;var tmpl=items[items.length-1];function mk(label,href){var a=document.createElement('a');a.href=href;a.textContent=label;a.className=tmpl.className;a.style.textDecoration='none';a.style.display=getComputedStyle(tmpl).display==='block'?'block':'';nav.appendChild(a);}mk('RADAR','radar.html');mk('DOCS','docs.html');nav.dataset.radarLinked='1';return true;}var tries=0;var t=setInterval(function(){if(addLinks()||++tries>40)clearInterval(t);},500);})();</script></body>
+</body>
 </html>
