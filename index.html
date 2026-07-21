@@ -644,5 +644,5 @@ document.getElementById('pw').addEventListener('keydown', e=>{ if(e.key==='Enter
 
 boot();
 </script>
-</body>
+<script>(function(){function addLinks(){var nav=document.querySelector('nav')||document.querySelector('.nav')||document.querySelector('#nav')||document.querySelector('.tabs')||document.querySelector('.topbar');if(!nav||nav.dataset.radarLinked)return false;var items=nav.querySelectorAll('a,button');if(!items.length)return false;var tmpl=items[items.length-1];function mk(label,href){var a=document.createElement('a');a.href=href;a.textContent=label;a.className=tmpl.className;a.style.textDecoration='none';a.style.display=getComputedStyle(tmpl).display==='block'?'block':'';nav.appendChild(a);}mk('RADAR','radar.html');mk('DOCS','docs.html');nav.dataset.radarLinked='1';return true;}var tries=0;var t=setInterval(function(){if(addLinks()||++tries>40)clearInterval(t);},500);})();</script></body>
 </html>
