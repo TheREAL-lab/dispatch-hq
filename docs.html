@@ -106,6 +106,7 @@
     body[data-print="d2"] #wrap-d2{display:block}
     body[data-print="d3"] #wrap-d3{display:block}
     body[data-print="d4"] #wrap-d4{display:block}
+    body[data-print="d5"] #wrap-d5{display:block}
     .sheet{box-shadow:none; border-radius:0; padding:0; font-size:12.5px}
     .fill{background:none; text-decoration:underline}
     h3{page-break-after:avoid}
@@ -132,6 +133,7 @@
     <a href="#wrap-d2"><span class="tag">DOC 02</span> Facility Dispatch Coordination Terms <span class="use">send to every facility</span></a>
     <a href="#wrap-d3"><span class="tag">DOC 03</span> Coordination Fee Invoice <span class="use">bill per dispatch</span></a>
     <a href="#wrap-d4"><span class="tag">DOC 04</span> Technician Onboarding Checklist <span class="use">send to new recruits</span></a>
+    <a href="#wrap-d5"><span class="tag">DOC 05</span> Sales Representative Agreement <span class="use">sign with every caller</span></a>
   </nav>
 
   <!-- ============================== DOC 1 ============================== -->
@@ -311,6 +313,73 @@
       </ol>
 
       <p style="margin-top:14px">Questions: <span class="fill">[PHONE]</span> · <span class="fill">[EMAIL]</span></p>
+    </article>
+  </section>
+
+  <!-- ============================== DOC 5 ============================== -->
+  <section class="docwrap" id="wrap-d5">
+    <div class="docbar">
+      <span class="tag">DOC 05</span><span class="name">Sales Representative Agreement</span>
+      <span class="spacer"></span>
+      <button class="act" onclick="copyDoc('d5', this)">Copy text</button>
+      <button class="act primary" onclick="printDoc('d5')">Print / PDF</button>
+    </div>
+    <article class="sheet" id="d5">
+      <h2 class="dtitle">Independent Sales Representative Agreement</h2>
+      <div class="dsub">Texas Gate Dispatch — Commission-Based Outreach</div>
+
+      <p>This Independent Sales Representative Agreement (the “Agreement”) is entered into as of <span class="fill">[DATE]</span> between <strong>Taylor Keup, an individual doing business as “Texas Gate Dispatch”</strong> (“Company”), and <span class="fill">[REPRESENTATIVE LEGAL NAME]</span> (“Representative”).</p>
+
+      <h3>1. Independent Contractor</h3>
+      <p>Representative is an independent contractor, not an employee, agent, partner, or joint venturer of Company. Representative sets Representative’s own schedule and methods, may work for others, and receives no salary, hourly wage, or benefits. Representative is responsible for Representative’s own taxes and expenses. Representative will provide a completed IRS Form W-9 before first payment; Company will issue Form 1099-NEC as required by law.</p>
+
+      <h3>2. Scope of Engagement</h3>
+      <p>Representative will conduct outreach to prospective client facilities identified in Company’s prospect system, present Company’s dispatch coordination service accurately, and log call outcomes in Company’s system. Representative <strong>may not</strong>: (a) sign any contract on Company’s behalf; (b) set, discount, or promise pricing other than Company’s published coordination fee; (c) promise repair outcomes, timelines, or warranties; (d) collect or handle any funds; or (e) represent that Company performs repairs or handles repair payments. Representative will describe the service consistently with Company’s coordinator model: independent technicians contract with and bill facilities directly, and Company charges only a flat coordination fee.</p>
+
+      <h3>3. Commission</h3>
+      <p>Company will pay Representative:</p>
+      <ol>
+        <li><strong>Account bounty:</strong> <span class="fill">[$40]</span> when a facility first closed by Representative pays its first coordination fee to Company; and</li>
+        <li><strong>Trailing commission:</strong> <span class="fill">[20]</span>% of each coordination fee <strong>actually collected</strong> by Company from that facility for dispatches requested within <span class="fill">[12]</span> months after the close date.</li>
+      </ol>
+      <p>A facility is “closed by Representative” when it is recorded as a client in Company’s system with Representative credited as the closer. Commissions accrue only on coordination fees actually collected (not on technician repair charges, which never pass through Company), and are reduced or reversed for refunds or uncollected invoices. No commission is owed on facilities with a documented pre-existing relationship with Company. Commissions are paid monthly, by the 10th, for the prior calendar month, with a statement of the underlying dispatches.</p>
+
+      <h3>4. Post-Termination Trail</h3>
+      <p>Either party may end this Agreement at any time with written notice (email suffices). For facilities closed by Representative before termination, the trailing commission in Section 3(b) continues to accrue and be paid for the remainder of each facility’s commission window, on fees actually collected. This survives termination.</p>
+
+      <h3>5. Confidentiality</h3>
+      <p>Company’s prospect lists, facility data, call outcomes, pricing, and business processes are confidential. Representative will use them solely to perform under this Agreement and will not disclose them or use them for any other business. This obligation survives termination.</p>
+
+      <h3>6. Non-Circumvention</h3>
+      <p>During this Agreement and for twelve (12) months after it ends, Representative will not solicit facilities from Company’s prospect system for any competing dispatch, repair-coordination, or repair service, and will not divert such facilities to any third party.</p>
+
+      <h3>7. Conduct and Compliance</h3>
+      <p>Representative will comply with all applicable laws in conducting outreach, including telemarketing and do-not-call laws applicable to business-to-business calls, and will immediately stop contacting any facility that asks not to be contacted.</p>
+
+      <h3>8. Limitation of Liability</h3>
+      <p>Company’s total liability to Representative under this Agreement will not exceed commissions properly accrued and unpaid. Neither party is liable for indirect, incidental, consequential, or lost-profit damages.</p>
+
+      <h3>9. General</h3>
+      <p>This Agreement is governed by Texas law, with venue in Collin County, Texas. It is the entire agreement on this subject and may be amended only in writing signed by both parties. Representative may not assign this Agreement. <strong>Company may assign this Agreement to a business entity formed by Company (including Texas Gate Dispatch LLC) upon its formation, without Representative’s consent.</strong> This Agreement may be signed in counterparts, and electronic signatures are effective.</p>
+
+      <h3>To Activate</h3>
+      <ul class="check">
+        <li><strong>Signed copy of this Agreement</strong></li>
+        <li><strong>Completed IRS Form W-9</strong> (irs.gov)</li>
+        <li><strong>Best cell number</strong> for lead assignments</li>
+        <li><strong>One script run-through</strong> with Company before first live call</li>
+      </ul>
+
+      <div class="sigrow">
+        <div class="sig">
+          <div class="sigline"></div>
+          <div class="siglabel">Company — Taylor Keup d/b/a Texas Gate Dispatch · Date</div>
+        </div>
+        <div class="sig">
+          <div class="sigline"></div>
+          <div class="siglabel">Representative — Name · Date</div>
+        </div>
+      </div>
     </article>
   </section>
 
