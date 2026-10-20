@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#141414">
+<title>1099 B2B Sales Audition — Texas Gate Dispatch</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#141414;--panel:#1d1d1d;--line:#2c2c2c;--orange:#ff6a00;--hazard:#ffc400;--dim:#9a9a9a;
+--bright:#f2f2f2;--good:#2ecc71;--bad:#ff5c5c}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--bright);font-family:'Archivo',system-ui,sans-serif;padding-bottom:80px;line-height:1.5}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px}
+header.top{padding:20px 0 14px;border-bottom:4px solid var(--orange);
+ background:repeating-linear-gradient(-45deg,transparent 0 14px,rgba(255,196,0,.06) 14px 28px)}
+.eyebrow{font-stretch:70%;font-weight:700;letter-spacing:.22em;font-size:11px;color:var(--orange);text-transform:uppercase}
+h1{font-stretch:66%;font-weight:900;font-size:clamp(26px,6vw,40px);text-transform:uppercase;line-height:1.05;margin-top:4px}
+.sub{color:var(--dim);font-size:13.5px;margin-top:6px}
+.navlinks{margin-top:10px;display:flex;gap:14px;font-size:12.5px}
+.navlinks a{color:var(--dim);text-decoration:none;font-weight:700}
+.navlinks a:hover{color:var(--orange)}
+h2.sec{font-stretch:70%;font-weight:800;font-size:13px;letter-spacing:.18em;text-transform:uppercase;
+ color:var(--orange);margin:24px 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:14px 16px;margin-bottom:10px}
+.card h3{font-stretch:70%;font-weight:800;font-size:15px;text-transform:uppercase;color:var(--bright);margin-bottom:6px}
+.card p{font-size:13px;color:#cfcfcf}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;margin-top:10px}
+.kpi{background:#151515;border:1px solid var(--line);border-radius:8px;padding:11px 12px}
+.kpi .n{font-stretch:66%;font-weight:900;font-size:25px;color:var(--orange)}
+.kpi .l{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+.scriptbox{background:#18140c;border:1px solid #4a3915;border-left:4px solid var(--hazard);border-radius:0 8px 8px 0;
+ padding:14px 16px;font-size:14.5px;line-height:1.6;color:#fff6d6;margin:10px 0}
+.scriptbox strong{color:var(--hazard)}
+label{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.07em;display:block;margin:10px 0 4px}
+input,select,textarea{width:100%;padding:11px;background:#111;border:1px solid #3a3a3a;border-radius:6px;
+ color:var(--bright);font:inherit;font-size:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1;min-width:180px}
+.checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-top:6px}
+.chk{display:flex;align-items:center;gap:8px;background:#151515;border:1px solid #2e2e2e;padding:9px 11px;border-radius:6px;font-size:13px;cursor:pointer}
+.chk input{width:auto;margin:0}
+button.b,a.b{font:inherit;font-weight:800;font-size:13.5px;letter-spacing:.05em;padding:11px 18px;border-radius:6px;
+ cursor:pointer;border:1px solid #3a3a3a;background:#262626;color:var(--bright);text-decoration:none;display:inline-block;text-align:center}
+button.b.go,a.b.go{background:var(--orange);border-color:var(--orange);color:#140900}
+button.b.rec{background:#2b1212;border-color:var(--bad);color:var(--bad)}
+button.b.rec.active{background:var(--bad);color:#140000;animation:pulse 1.1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.65}}
+.note{margin:12px 0;padding:10px 13px;border-left:4px solid var(--hazard);background:#221d0d;color:#ffe9a8;
+ font-size:12.5px;line-height:1.5;border-radius:0 6px 6px 0}
+.okbox{display:none;background:#0f2618;border:2px solid var(--good);border-radius:10px;padding:20px;margin-top:16px}
+.okbox h3{color:var(--good);font-stretch:70%;font-weight:900;text-transform:uppercase;font-size:20px;margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Texas Gate Dispatch · 1099 Sales Force Recruiting</div>
+    <h1>B2B Territory Caller Brief &amp; 60-Sec Voice Audition</h1>
+    <div class="sub">Remote / North DFW · Calling independent self-storage operators · Uncapped bounties + 12-month residual trail</div>
+    <div class="navlinks">
+      <a href="index.html">← Dispatch HQ Sign In</a>
+      <a href="docs.html#wrap-d5" target="_blank">Read Full Rep Agreement (DOC 05) ↗</a>
+      <a href="docs.html#wrap-d2" target="_blank">Facility Terms (DOC 02) ↗</a>
+    </div>
+  </header>
+
+  <h2 class="sec">1. Why Experienced Callers Love This Desk</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>90%+ Live Pick-Up Rate</h3>
+      <p>You are calling self-storage facility managers during business hours (8:30 AM – 5:00 PM CT). They <strong>have</strong> to answer the phone on ring 2 because incoming calls are new tenant move-ins. Zero corporate gatekeeper mazes.</p>
+    </div>
+    <div class="card">
+      <h3>$0 Retainer = Easy “Yes”</h3>
+      <p>You aren’t selling software or asking for a credit card on a cold call. It costs a facility <strong>$0</strong> to put Texas Gate Dispatch on the wall as their vetted emergency gate/keypad backup. They only pay our flat $89 coordination fee when a tech arrives on-site.</p>
+    </div>
+    <div class="card">
+      <h3>Multi-Property Multiplier</h3>
+      <p>Independent storage managers and regional operators frequently run <strong>3 to 10 locations</strong> across DFW. Land one regional manager and you lock in the $40 bounty + 20% 12-month residual trail on <strong>every single rooftop</strong> they oversee.</p>
+    </div>
+  </div>
+
+  <h2 class="sec">2. How You Get Paid (Interactive Earnings Calculator)</h2>
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Single-Site Facilities Enrolled / Mo: <strong id="lblSingle" style="color:var(--orange)">15</strong></label>
+        <input type="range" id="rngSingle" min="4" max="40" value="15" oninput="recalc()">
+      </div>
+      <div>
+        <label>Multi-Site Regional Managers Landed / Mo (avg 4 locations each): <strong id="lblMulti" style="color:var(--orange)">2</strong></label>
+        <input type="range" id="rngMulti" min="0" max="10" value="2" oninput="recalc()">
+      </div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="n" id="kRoofs">23</div><div class="l">Total Facility Roofs Credited</div></div>
+      <div class="kpi"><div class="n">$57.80</div><div class="l">1st Standard Dispatch ($40 + 20%)</div></div>
+      <div class="kpi"><div class="n" id="kFirst">$798</div><div class="l">Est. First-Dispatch Bounties</div></div>
+      <div class="kpi"><div class="n" id="kTrail">+$901/yr</div><div class="l">Est. 12-Mo Repeat Trail (20%)</div></div>
+    </div>
+    <div class="note" style="margin-top:12px">
+      <strong>Plus Fast-Start Milestone Spiff:</strong> Every <strong>10 verified Vendor-on-File enrollments</strong> (decision-maker name logged, current gate vendor recorded, and Dispatch Terms sent) unlocks a <strong>+$50 Fast-Start Bonus</strong> alongside your first collected dispatch payout.
+    </div>
+  </div>
+
+  <h2 class="sec">3. 60-Second Voice Audition (No Resume Required)</h2>
+  <div class="card">
+    <p style="margin-bottom:8px">We don’t do dragged-out corporate Zoom interviews. If you sound sharp, natural, and confident on the phone, we’ll activate your seat inside <strong>Dispatch HQ</strong> and deal your first <strong>25 North DFW storage leads</strong> today.</p>
+    <label>Read This 30-Second Opener Aloud:</label>
+    <div class="scriptbox">
+      “Hey <strong>[Manager Name]</strong>, this is <strong>[Your Name]</strong> with <strong>Texas Gate Dispatch</strong> here in North DFW. We’re the on-call commercial gate, keypad, and access-control dispatch desk for independent self-storage operators in Plano and Frisco.<br><br>
+      Quick question — do you have a gate or keypad acting up right now, or can I text you our 1-page Dispatch Card as your backup for the next time your regular gate guy is booked out for a week?”
+    </div>
+
+    <div class="row" style="align-items:center;margin-top:12px">
+      <button type="button" class="b rec" id="btnRec" onclick="toggleRecord()">🎙️ Record 30-Sec Pitch in Browser</button>
+      <span id="recStatus" style="font-size:12.5px;color:var(--dim)">Click to record with your phone or laptop mic (up to 45 sec).</span>
+    </div>
+    <audio id="audioPreview" controls style="display:none;width:100%;margin-top:10px"></audio>
+
+    <label style="margin-top:12px">Or Paste a Voice Recording Link (Vocaroo.com, Loom, Google Drive) — Optional if recorded above</label>
+    <input id="c_vurl" placeholder="https://voca.ro/... (or record in-browser above)">
+
+    <div class="row">
+      <div><label>Full Name *</label><input id="c_name" placeholder="Jane Doe" required></div>
+      <div><label>Cell Phone (for lead alerts) *</label><input id="c_phone" type="tel" placeholder="469-555-0199" required></div>
+    </div>
+    <div class="row">
+      <div><label>Email Address *</label><input id="c_email" type="email" placeholder="you@example.com" required></div>
+      <div><label>City / State *</label><input id="c_city" placeholder="e.g. Dallas, TX"></div>
+      <div><label>Hours Available / Week (M–F 8:30–5 CT)</label>
+        <select id="c_hrs">
+          <option value="10">10–15 hrs/wk (Part-Time)</option>
+          <option value="20" selected>15–25 hrs/wk</option>
+          <option value="35">30–40 hrs/wk (Full-Time Territory)</option>
+        </select>
+      </div>
+    </div>
+
+    <label>How Did You Hear About Us?</label>
+    <select id="c_src">
+      <option value="craigslist_dfw">Craigslist DFW</option>
+      <option value="commission_crowd">CommissionCrowd / RepHunter</option>
+      <option value="reddit_sales">Reddit (r/sales, r/forhire, r/DFWJobs)</option>
+      <option value="upwork">Upwork / Freelancer</option>
+      <option value="indeed_zip">Indeed / ZipRecruiter</option>
+      <option value="direct_invite">Direct Invite / Scout Outreach</option>
+    </select>
+
+    <label>Prior Phone Sales &amp; Industry Experience (Check all that apply)</label>
+    <div class="checks">
+      <label class="chk"><input type="checkbox" class="c_cap" value="b2b_cold_calling" checked> B2B Cold Calling / Appointment Setting</label>
+      <label class="chk"><input type="checkbox" class="c_cap" value="storage_cre"> Self-Storage / Property Mgmt / CRE</label>
+      <label class="chk"><input type="checkbox" class="c_cap" value="commercial_trades"> Commercial Trades (Roofing, HVAC, Access, Solar)</label>
+      <label class="chk"><input type="checkbox" class="c_cap" value="1099_commission"> Prior 1099 / Commission-Only Closer</label>
+    </div>
+
+    <label>Brief Summary of Your Cold-Calling Track Record *</label>
+    <textarea id="c_exp" rows="3" placeholder="What have you sold over the phone? Average dials/day? Any commercial property or trades experience?"></textarea>
+
+    <button type="button" class="b go" id="btnSubmit" style="width:100%;margin-top:14px;padding:14px" onclick="submitAudition()">Submit Audition &amp; Request Rep Seat →</button>
+    <div id="subErr" style="color:var(--bad);font-size:13px;margin-top:8px"></div>
+
+    <div class="okbox" id="okBox">
+      <h3>Audition Received ✓</h3>
+      <p>Your application and pitch score are now in our <strong>Radar Recruiting Console</strong>. Next step: create your pending login on <a href="index.html" style="color:var(--hazard);font-weight:800">Dispatch HQ (index.html)</a> using the same email address so we can activate your seat and deal your first 25 storage facility leads.</p>
+      <div class="row" style="margin-top:12px">
+        <a class="b go" href="index.html">1. Create Login on Dispatch HQ →</a>
+        <a class="b" href="docs.html#wrap-d5" target="_blank">2. Review Sales Rep Agreement (DOC 05) ↗</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SB_URL='https://teptzyvzuenolwtfosht.supabase.co', SB_KEY='sb_publishable_4LgHf6k24QMus_1nvHPgSg__3rjqh52';
+const sb=window.supabase.createClient(SB_URL,SB_KEY);
+const $=id=>document.getElementById(id);
+
+let mediaRec=null, chunks=[], recordedDataUrl=null, recTimer=null, recSec=0;
+
+function recalc(){
+  const s=+$('rngSingle').value, m=+$('rngMulti').value;
+  $('lblSingle').textContent=s;
+  $('lblMulti').textContent=m;
+  const roofs=s+(m*4);
+  $('kRoofs').textContent=roofs;
+  const first=Math.round(roofs*0.60*57.80);
+  const trail=Math.round(roofs*2.2*17.80);
+  $('kFirst').textContent='$'+first.toLocaleString();
+  $('kTrail').textContent='+$'+trail.toLocaleString()+'/yr';
+}
+
+async function toggleRecord(){
+  const btn=$('btnRec'), st=$('recStatus');
+  if(mediaRec&&mediaRec.state==='recording'){
+    mediaRec.stop();
+    clearInterval(recTimer);
+    return;
+  }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    chunks=[];
+    const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?'audio/webm;codecs=opus':'';
+    mediaRec=mime?new MediaRecorder(stream,{mimeType:mime,audioBitsPerSecond:24000}):new MediaRecorder(stream);
+    mediaRec.ondataavailable=e=>{if(e.data&&e.data.size>0)chunks.push(e.data)};
+    mediaRec.onstop=()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      btn.classList.remove('active');
+      btn.textContent='🎙️ Re-Record 30-Sec Pitch';
+      const blob=new Blob(chunks,{type:mediaRec.mimeType||'audio/webm'});
+      const reader=new FileReader();
+      reader.onloadend=()=>{
+        recordedDataUrl=reader.result;
+        const ap=$('audioPreview');
+        ap.src=recordedDataUrl;
+        ap.style.display='block';
+        st.textContent='Voice audition recorded ('+recSec+'s) ✓ Ready to submit.';
+      };
+      reader.readAsDataURL(blob);
+    };
+    recSec=0;
+    mediaRec.start();
+    btn.classList.add('active');
+    btn.textContent='⏹ Stop Recording (0s)';
+    st.textContent='Recording… read the yellow script box aloud clearly.';
+    recTimer=setInterval(()=>{
+      recSec++;
+      btn.textContent='⏹ Stop Recording ('+recSec+'s)';
+      if(recSec>=45&&mediaRec.state==='recording'){mediaRec.stop();clearInterval(recTimer);}
+    },1000);
+  }catch(e){
+    st.textContent='Mic access blocked or unavailable — paste a Vocaroo.com link below instead.';
+  }
+}
+
+function scoreCandidate(caps,hrs,hasVoice,expText){
+  let sc=40;
+  const bd={};
+  if(caps.includes('b2b_cold_calling')){sc+=20;bd.b2b=20;}
+  if(caps.includes('storage_cre')){sc+=15;bd.cre=15;}
+  if(caps.includes('commercial_trades')){sc+=10;bd.trades=10;}
+  if(caps.includes('1099_commission')){sc+=15;bd.comm1099=15;}
+  if(hasVoice){sc+=15;bd.voice_audition=15;}
+  if(hrs>=20){sc+=5;bd.hours=5;}
+  if(expText.length>=40){sc+=5;bd.detail=5;}
+  return {score:Math.min(100,sc),bd};
+}
+
+async function submitAudition(){
+  $('subErr').textContent='';
+  const name=$('c_name').value.trim(), phone=$('c_phone').value.trim(), email=$('c_email').value.trim();
+  const city=$('c_city').value.trim(), hrs=+$('c_hrs').value, src=$('c_src').value;
+  const exp=$('c_exp').value.trim();
+  const vurl=$('c_vurl').value.trim()||recordedDataUrl||null;
+  if(!name||!phone||!email){$('subErr').textContent='Please enter your name, cell phone, and email address.';return}
+  const caps=Array.from(document.querySelectorAll('.c_cap:checked')).map(x=>x.value);
+  const {score,bd}=scoreCandidate(caps,hrs,!!vurl,exp);
+  const btn=$('btnSubmit');
+  btn.disabled=true; btn.textContent='Submitting Audition…';
+
+  const row={
+    name, email, phone, city:city||'DFW / Remote', source:src,
+    hours_per_week:hrs, capabilities:caps, experience_summary:exp||null,
+    voice_sample_url:vurl, score, score_breakdown:bd,
+    status:vurl?'auditioned':'new'
+  };
+
+  let {error}=await sb.from('rep_candidates').insert(row);
+  if(error){
+    try{
+      const saved=JSON.parse(localStorage.getItem('dhq_local_rep_candidates')||'[]');
+      saved.unshift(Object.assign({id:'loc-'+Date.now(),created_at:new Date().toISOString()},row));
+      localStorage.setItem('dhq_local_rep_candidates',JSON.stringify(saved));
+    }catch(e){}
+  }
+  btn.style.display='none';
+  $('okBox').style.display='block';
+}
+
+recalc();
+</script>
+</body>
+</html>

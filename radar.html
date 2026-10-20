@@ -8,25 +8,28 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{--bg:#141414;--panel:#1d1d1d;--line:#2c2c2c;--orange:#ff6a00;--hazard:#ffc400;
-        --dim:#9a9a9a;--bright:#f2f2f2;--good:#2ecc71;--warm:#ffb03a;}
+        --dim:#9a9a9a;--bright:#f2f2f2;--good:#2ecc71;--warm:#ffb03a;--danger:#ff5555;}
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--bright);font-family:'Archivo',system-ui,sans-serif;padding-bottom:70px}
-  .wrap{max-width:860px;margin:0 auto;padding:0 14px}
+  .wrap{max-width:920px;margin:0 auto;padding:0 14px}
   header.top{padding:18px 0 12px;border-bottom:4px solid var(--orange);
     background:repeating-linear-gradient(-45deg,transparent 0 14px,rgba(255,196,0,.06) 14px 28px)}
   .eyebrow{font-stretch:70%;font-weight:700;letter-spacing:.22em;font-size:11px;color:var(--orange);text-transform:uppercase}
   h1{font-stretch:66%;font-weight:900;font-size:clamp(26px,6vw,38px);text-transform:uppercase;line-height:1}
-  .navlinks{margin-top:8px;display:flex;gap:14px;font-size:13px}
+  .navlinks{margin-top:8px;display:flex;gap:14px;font-size:13px;flex-wrap:wrap;align-items:center}
   .navlinks a{color:var(--dim);text-decoration:none;font-weight:700}
   .navlinks a:hover{color:var(--orange)}
   .tabs{display:flex;gap:8px;margin:16px 0 6px}
   .tab{flex:1;text-align:center;padding:11px 8px;background:var(--panel);border:1px solid var(--line);
-       border-radius:7px;font-stretch:70%;font-weight:800;letter-spacing:.08em;font-size:14px;
+       border-radius:7px;font-stretch:70%;font-weight:800;letter-spacing:.08em;font-size:13.5px;
        text-transform:uppercase;cursor:pointer;color:var(--dim)}
   .tab.on{color:#140900;background:var(--orange);border-color:var(--orange)}
-  .counts{color:var(--dim);font-size:12px;margin:6px 2px 12px}
+  .counts{color:var(--dim);font-size:12px;margin:6px 2px 12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;align-items:center;justify-content:space-between;
+           background:#181818;border:1px solid var(--line);padding:10px 12px;border-radius:8px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:13px 14px;margin-bottom:10px}
   .card.hot{border-left:4px solid var(--orange)}
+  .card.good{border-left:4px solid var(--good)}
   .row1{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
   .cname{font-weight:800;font-size:16px}
   .score{margin-left:auto;font-stretch:70%;font-weight:900;font-size:18px;color:var(--orange)}
@@ -37,65 +40,251 @@
         background:#262626;border:1px solid #3a3a3a;color:var(--dim);text-transform:uppercase}
   .chip.pain{background:#2a1503;border-color:var(--orange);color:var(--orange)}
   .chip.lic{background:#201b06;border-color:var(--hazard);color:var(--hazard)}
+  .chip.good{background:rgba(46,204,113,.12);border-color:var(--good);color:var(--good)}
   .ev{margin-top:8px;padding:8px 10px;background:#171717;border-left:3px solid var(--hazard);
       color:#cfc9b6;font-size:12.5px;line-height:1.45;border-radius:0 5px 5px 0;font-style:italic}
-  .acts{display:flex;gap:8px;margin-top:11px}
-  button.b{font:inherit;font-weight:800;font-size:12.5px;letter-spacing:.05em;padding:9px 14px;
-           border-radius:6px;cursor:pointer;border:1px solid #3a3a3a;background:#262626;color:var(--bright)}
+  .audio-box{margin-top:10px;padding:9px 11px;background:#131313;border:1px solid #2f2f2f;border-radius:6px}
+  .audio-box .lbl{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--hazard);margin-bottom:5px}
+  .audio-box audio{width:100%;height:36px}
+  .acts{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+  button.b{font:inherit;font-weight:800;font-size:12px;letter-spacing:.05em;padding:8px 13px;
+           border-radius:6px;cursor:pointer;border:1px solid #3a3a3a;background:#262626;color:var(--bright);text-transform:uppercase}
+  button.b:hover{border-color:var(--orange)}
   button.b.go{background:var(--orange);border-color:var(--orange);color:#140900}
+  button.b.good{background:rgba(46,204,113,.16);border-color:var(--good);color:var(--good)}
+  button.b.sm{padding:6px 10px;font-size:11px}
   button.b:disabled{opacity:.45;cursor:default}
   .note{margin:14px 0;padding:10px 12px;border-left:4px solid var(--hazard);background:#221d0d;
         color:#ffe9a8;font-size:12.5px;line-height:1.5;border-radius:0 6px 6px 0}
   .empty{color:var(--dim);text-align:center;padding:34px 10px;font-size:14px}
-  #login{max-width:360px;margin:60px auto;background:var(--panel);border:1px solid var(--line);
+  #login,#denied{max-width:400px;margin:60px auto;background:var(--panel);border:1px solid var(--line);
          border-radius:10px;padding:22px}
-  #login h2{font-stretch:70%;font-weight:900;text-transform:uppercase;margin-bottom:12px}
-  #login input{width:100%;padding:11px;margin-bottom:10px;background:#111;border:1px solid #3a3a3a;
-               border-radius:6px;color:var(--bright);font:inherit}
+  #login h2,#denied h2{font-stretch:70%;font-weight:900;text-transform:uppercase;margin-bottom:12px}
+  #login input,.modal input,.modal select,.modal textarea{width:100%;padding:10px;margin-bottom:10px;background:#111;border:1px solid #3a3a3a;
+               border-radius:6px;color:var(--bright);font:inherit;font-size:13.5px}
   #login button{width:100%}
   .err{color:#ff7a7a;font-size:12.5px;margin-top:8px;min-height:16px}
   .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--orange);
          color:#140900;font-weight:800;padding:10px 18px;border-radius:7px;font-size:13.5px;
-         opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%}
+         opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;z-index:999}
   .toast.show{opacity:1}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;padding:16px;z-index:200}
+  .modal-bg.open{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--orange);border-radius:10px;
+         max-width:680px;width:100%;max-height:88vh;overflow-y:auto;padding:20px}
+  .modal h3{font-stretch:70%;font-weight:900;text-transform:uppercase;font-size:20px;margin-bottom:6px}
+  .modal label{display:block;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:8px 0 4px}
+  .ad-box{background:#121212;border:1px solid #2e2e2e;border-radius:6px;padding:12px;margin:10px 0;font-size:12.5px;line-height:1.5;white-space:pre-wrap;color:#ddd;max-height:220px;overflow-y:auto;font-family:ui-monospace,monospace}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="eyebrow">Texas Gate Dispatch · Targeting</div>
+    <div class="eyebrow">Texas Gate Dispatch · Owner Targeting & Recruiting</div>
     <h1>Radar</h1>
-    <div class="navlinks"><a href="index.html">← Command</a><a href="docs.html">Docs</a></div>
+    <div class="navlinks">
+      <a href="index.html">← Command HQ</a>
+      <a href="docs.html">Legal & Docs</a>
+      <a href="audition.html" target="_blank" style="color:var(--hazard)">1099 Audition Portal ↗</a>
+    </div>
   </header>
 
   <div id="login" style="display:none">
-    <h2>Sign in</h2>
+    <h2>Owner Sign In</h2>
     <input id="em" type="email" placeholder="Email" autocomplete="username">
     <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
     <button class="b go" onclick="doLogin()">Sign in</button>
     <div class="err" id="lerr"></div>
   </div>
 
+  <div id="denied" style="display:none">
+    <h2 style="color:var(--danger)">Owner Access Only</h2>
+    <p style="color:var(--dim);font-size:13.5px;line-height:1.5;margin-bottom:16px">
+      Radar (Lead Sweeps, Tech Sourcing, and 1099 Rep Auditions) is restricted to Dispatch HQ Owners.
+      Sales Representatives operate exclusively inside the Rep Calling Console.
+    </p>
+    <a href="index.html"><button class="b go" style="width:100%">← Return to Rep Console</button></a>
+  </div>
+
   <div id="app" style="display:none">
     <div class="tabs">
-      <div class="tab on" id="tab-leads" onclick="setTab('leads')">Leads</div>
-      <div class="tab" id="tab-techs" onclick="setTab('techs')">Techs</div>
+      <div class="tab on" id="tab-leads" onclick="setTab('leads')">Facility Leads</div>
+      <div class="tab" id="tab-techs" onclick="setTab('techs')">Gate Techs</div>
+      <div class="tab" id="tab-reps" onclick="setTab('reps')">Sales Reps (1099)</div>
     </div>
+
+    <div id="rep-toolbar" class="toolbar" style="display:none">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <button class="b sm go" id="rf-active" onclick="setRepFilter('active')">Active Auditions</button>
+        <button class="b sm" id="rf-approved" onclick="setRepFilter('approved')">Approved / Onboarded</button>
+        <button class="b sm" id="rf-all" onclick="setRepFilter('all')">All</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="b sm" onclick="copyAuditionLink()">Copy Audition Link</button>
+        <button class="b sm" onclick="openModal('addRepModal')">+ Add Candidate</button>
+        <button class="b sm go" onclick="openModal('swarmModal')">Recruiting Ads & Swarm Kit</button>
+      </div>
+    </div>
+
     <div class="counts" id="counts"></div>
     <div id="list"></div>
-    <div class="note" id="sweepnote">New candidates are found by sweep. Sweeps currently run through Claude on request;
-      the in-app sweep button arrives with the Google API key setup.</div>
+    <div class="note" id="sweepnote">
+      New facility &amp; tech candidates are found by automated sweep (`python3 agents/recruiting_swarm.py`).
+      1099 Sales Rep candidates flow in automatically from <strong>audition.html</strong> or via the Recruiting Swarm CLI.
+    </div>
   </div>
   <div class="err" id="booterr" style="padding:20px 4px"></div>
 </div>
+
+<!-- Modal: Add 1099 Candidate Manually -->
+<div class="modal-bg" id="addRepModal" onclick="if(event.target===this)closeModal('addRepModal')">
+  <div class="modal">
+    <h3>+ Add 1099 Sales Rep Candidate</h3>
+    <p style="color:var(--dim);font-size:12.5px;margin-bottom:12px">Log a candidate sourced from CommissionCrowd, Craigslist DFW, Reddit, Upwork, or LinkedIn.</p>
+    <label>Full Name *</label>
+    <input id="rc-name" placeholder="e.g. Marcus Vance">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <label>Phone *</label>
+        <input id="rc-phone" placeholder="214-555-0192">
+      </div>
+      <div>
+        <label>Email *</label>
+        <input id="rc-email" placeholder="marcus@example.com">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div>
+        <label>City / State</label>
+        <input id="rc-city" placeholder="Dallas, TX" value="DFW, TX">
+      </div>
+      <div>
+        <label>Source Channel</label>
+        <select id="rc-source">
+          <option value="commissioncrowd">CommissionCrowd</option>
+          <option value="craigslist_dfw">Craigslist DFW</option>
+          <option value="reddit">Reddit (r/sales / r/forhire)</option>
+          <option value="upwork">Upwork / Freelance</option>
+          <option value="rephunter">RepHunter</option>
+          <option value="referral">Direct Referral</option>
+        </select>
+      </div>
+      <div>
+        <label>Hrs / Week</label>
+        <input id="rc-hrs" type="number" value="20">
+      </div>
+    </div>
+    <label>Experience &amp; Pitch Notes</label>
+    <textarea id="rc-notes" rows="3" placeholder="Past B2B cold calling experience, property management familiarity, or why they want commission..."></textarea>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+      <button class="b" onclick="closeModal('addRepModal')">Cancel</button>
+      <button class="b go" onclick="saveNewRepCandidate()">Save Candidate</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Recruiting Swarm Ads & SQL Setup -->
+<div class="modal-bg" id="swarmModal" onclick="if(event.target===this)closeModal('swarmModal')">
+  <div class="modal">
+    <h3>1099 Recruiting Swarm &amp; Job Ad Kit</h3>
+    <p style="color:var(--dim);font-size:12.5px;margin-bottom:10px">
+      Never ask candidates for resumes or schedule interviews before hearing them on the phone.
+      Every ad funnels directly to your self-serve 60-second voice audition page (`audition.html`).
+    </p>
+
+    <label>1. Craigslist DFW (`sales / biz dev` + `gigs → talent`)</label>
+    <div class="ad-box" id="ad-cl">TITLE: B2B Outbound Opener (DFW Self-Storage) — Zero Cost Pitch ($40/Deal + 20% 12-Mo Residuals)
+
+We run Texas Gate Dispatch — a 24/7 commercial gate & access-control dispatch desk serving 600+ DFW self-storage facilities.
+
+Why this is the easiest B2B cold call you will ever make:
+You are NOT selling a subscription or retainer. Storage managers pay $0 to list us as their backup Vendor-on-File for when their primary gate company can't come out for 4 days.
+
+COMPENSATION (1099 Independent Rep):
+• $50 Fast-Start Bonus on your first 10 verified Vendor-on-File (VOF) enrollments (free for the manager to sign).
+• $40 First-Dispatch Bounty the moment any facility you enrolled places their first paid service call.
+• 20% Trailing Residual Commission on every dispatch fee that facility generates for 12 full months.
+• Multi-Property Multiplier: Enroll a regional manager with 8 DFW sites and you earn the $40 bounty + 20% residual on ALL 8 roofs.
+
+NO RESUMES. Complete our 60-second browser voice audition here:</div>
+    <button class="b sm" onclick="copyAd('ad-cl')">Copy Craigslist Ad + Audition Link</button>
+
+    <label style="margin-top:14px">2. Reddit (`r/forhire`, `r/sales`, `r/DFWJobs`) / Direct DM</label>
+    <div class="ad-box" id="ad-rd">[Hiring] (Remote / Texas) B2B Cold Callers for DFW Commercial Gate Dispatch — Zero-Cost Offer to Prospect ($50 VOF Fast-Start + $40/Site Bounty + 20% 12-Mo Residuals)
+
+We have 600+ pre-scored DFW self-storage leads inside our dialer (many with verified recent gate failures pulled from Google reviews).
+Your job: Call storage facility managers during weekday hours (9am–4pm CT) and get us added as their free backup Vendor-on-File (1-page SMS/email sign-off).
+
+• 20 hrs/wk realistic earnings: $2,100–$3,800/mo by Month 3 as your residual book compounds.
+• Browser dialer, live objection playbook, and 1-click SMS terms built in.
+• Skip the resume — read a 30-second script on our voice audition portal:</div>
+    <button class="b sm" onclick="copyAd('ad-rd')">Copy Reddit Post + Audition Link</button>
+
+    <label style="margin-top:14px">3. CommissionCrowd / RepHunter (Independent Facilities &amp; Commercial Reps)</label>
+    <div class="ad-box" id="ad-cc">Opportunity: Commercial Gate & Access Control Dispatch — Multi-Property Storage Portfolio Residuals (Texas)
+
+Seeking independent B2B sales reps calling on Self-Storage Operators, Property Management Groups, and Industrial Yards across DFW.
+Zero upfront cost to the facility (we only charge $89 standard / $149 emergency dispatch coordination when they actually use us).
+We credit you across the operator's ENTIRE portfolio: land one regional manager with 10 locations and earn $40 per roof ($400) + 20% trailing commission on all 10 properties for 12 months.
+
+Audition & interactive commission calculator:</div>
+    <button class="b sm" onclick="copyAd('ad-cc')">Copy CommissionCrowd Pitch + Link</button>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--line)">
+      <span style="font-size:12px;color:var(--dim)">CLI Swarm: <code>python3 agents/recruiting_swarm.py --help</code></span>
+      <button class="b go" onclick="closeModal('swarmModal')">Done</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
-let sb=null, tab='leads', rows=[];
+let sb=null, tab='leads', rows=[], repFilter='active', dbMissingRepTable=false;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function openModal(id){$(id).classList.add('open');}
+function closeModal(id){$(id).classList.remove('open');}
+
+function getAuditionUrl(){
+  return new URL('audition.html', window.location.href).href;
+}
+function getHqUrl(){
+  return new URL('index.html', window.location.href).href;
+}
+function getDocsUrl(docId){
+  return new URL('docs.html'+(docId?'?doc='+docId:''), window.location.href).href;
+}
+
+function copyAuditionLink(){
+  const u=getAuditionUrl();
+  navigator.clipboard.writeText(u);
+  toast('Copied Audition Portal URL ✓');
+}
+
+function copyAd(boxId){
+  const txt=$(boxId).textContent.trim()+'\n'+getAuditionUrl();
+  navigator.clipboard.writeText(txt);
+  toast('Copied Ad + Audition Link ✓');
+}
+
+async function verifyOwnerAndLoad(){
+  try{
+    const {data:roleData,error:roleErr}=await sb.rpc('dhq_role');
+    if(!roleErr && roleData && roleData!=='owner'){
+      $('login').style.display='none';
+      $('app').style.display='none';
+      $('denied').style.display='block';
+      return;
+    }
+  }catch(_e){}
+  $('login').style.display='none';
+  $('denied').style.display='none';
+  $('app').style.display='block';
+  load();
+}
 
 async function boot(){
   try{
@@ -105,7 +294,7 @@ async function boot(){
     if(!url||!key){$('booterr').textContent='Could not read connection config from index.html.';return;}
     sb=window.supabase.createClient(url,key);
     const {data:{session}}=await sb.auth.getSession();
-    if(session){$('app').style.display='block';load();}
+    if(session){await verifyOwnerAndLoad();}
     else{$('login').style.display='block';}
   }catch(e){$('booterr').textContent='Boot error: '+e.message;}
 }
@@ -114,25 +303,269 @@ async function doLogin(){
   $('lerr').textContent='';
   const {error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});
   if(error){$('lerr').textContent=error.message;return;}
-  $('login').style.display='none';$('app').style.display='block';load();
+  await verifyOwnerAndLoad();
 }
 
-function setTab(t){tab=t;$('tab-leads').classList.toggle('on',t==='leads');
-  $('tab-techs').classList.toggle('on',t==='techs');load();}
+function setTab(t){
+  tab=t;
+  $('tab-leads').classList.toggle('on',t==='leads');
+  $('tab-techs').classList.toggle('on',t==='techs');
+  $('tab-reps').classList.toggle('on',t==='reps');
+  $('rep-toolbar').style.display=t==='reps'?'flex':'none';
+  load();
+}
+
+function setRepFilter(f){
+  repFilter=f;
+  $('rf-active').classList.toggle('go',f==='active');
+  $('rf-approved').classList.toggle('go',f==='approved');
+  $('rf-all').classList.toggle('go',f==='all');
+  load();
+}
+
+function getLocalRepAuditions(){
+  try{return JSON.parse(localStorage.getItem('dhq_local_rep_auditions')||'[]');}catch(_e){return [];}
+}
+function saveLocalRepAuditions(arr){
+  try{localStorage.setItem('dhq_local_rep_auditions',JSON.stringify(arr));}catch(_e){}
+}
 
 async function load(){
   $('list').innerHTML='<div class="empty">Loading…</div>';
+  if(tab==='reps'){
+    await loadRepCandidates();
+    return;
+  }
   const table=tab==='leads'?'lead_candidates':'tech_candidates';
   const {data,error}=await sb.from(table).select('*').eq('status','new').order('score',{ascending:false});
   if(error){$('list').innerHTML='<div class="empty">'+esc(error.message)+'</div>';return;}
   rows=data||[];
   const {count:pc}=await sb.from(table).select('*',{count:'exact',head:true}).eq('status','promoted');
-  $('counts').textContent=rows.length+' new · '+(pc||0)+' promoted';
+  $('counts').innerHTML='<span>'+rows.length+' new · '+(pc||0)+' promoted</span>';
   render();
 }
 
+async function loadRepCandidates(){
+  dbMissingRepTable=false;
+  let dbRows=[];
+  const {data,error}=await sb.from('rep_candidates').select('*').order('score',{ascending:false});
+  if(error){
+    dbMissingRepTable=true;
+  }else{
+    dbRows=data||[];
+  }
+  const localRows=getLocalRepAuditions();
+  const seen=new Set(dbRows.map(r=>r.id||r.email));
+  const merged=[...dbRows];
+  localRows.forEach(lr=>{
+    if(!seen.has(lr.id)&&!seen.has(lr.email))merged.push(lr);
+  });
+
+  const activeCount=merged.filter(r=>r.status==='audition_submitted'||r.status==='new').length;
+  const approvedCount=merged.filter(r=>r.status==='approved'||r.status==='onboarded').length;
+
+  rows=merged.filter(r=>{
+    if(repFilter==='active')return r.status==='audition_submitted'||r.status==='new';
+    if(repFilter==='approved')return r.status==='approved'||r.status==='onboarded';
+    return true;
+  }).sort((a,b)=>(b.score||0)-(a.score||0));
+
+  $('counts').innerHTML='<span>'+activeCount+' active auditions · '+approvedCount+' approved/onboarded</span>'+
+    (dbMissingRepTable?'<span style="color:var(--hazard)">⚠ Run supabase/migrations/20261020_rep_sales_force_and_recruiting.sql in Supabase SQL Editor to persist rep_candidates in cloud DB</span>':'');
+  renderReps();
+}
+
+function renderReps(){
+  if(!rows.length){
+    $('list').innerHTML='<div class="empty">No 1099 rep candidates in this view yet.<br><br>'+
+      '<button class="b go" onclick="copyAuditionLink()">Copy Audition Link</button> '+
+      '<button class="b" onclick="seedSampleReps()">+ Load 3 Demo Auditions</button></div>';
+    return;
+  }
+  $('list').innerHTML=rows.map(r=>{
+    const hot=(r.score||0)>=80?' hot':(r.status==='approved'||r.status==='onboarded'?' good':'');
+    const tel=r.phone?('<a href="tel:'+esc(r.phone)+'">'+esc(r.phone)+'</a> · '):'';
+    const mail=r.email?('<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a> · '):'';
+    let chips='<span class="chip '+(r.status==='approved'||r.status==='onboarded'?'good':'lic')+'">'+esc(r.status||'new')+'</span>';
+    if(r.source)chips+='<span class="chip">'+esc(r.source)+'</span>';
+    if(r.availability_hrs)chips+='<span class="chip">'+esc(r.availability_hrs)+' hrs/wk</span>';
+    (r.experience_tags||[]).forEach(t=>chips+='<span class="chip pain">'+esc(String(t).replace(/_/g,' '))+'</span>');
+
+    const ev=r.notes?'<div class="ev">“'+esc(r.notes)+'”</div>':'';
+    let audioHtml='';
+    if(r.voice_sample_url){
+      audioHtml='<div class="audio-box"><div class="lbl">🎙 60-Second Storage Manager Voice Audition</div>'+
+        '<audio controls preload="none" src="'+esc(r.voice_sample_url)+'"></audio></div>';
+    }else{
+      audioHtml='<div class="audio-box" style="border-style:dashed"><div class="lbl" style="color:var(--dim)">No voice sample recorded yet — send audition link below</div></div>';
+    }
+
+    return '<div class="card'+hot+'">'+
+      '<div class="row1"><span class="cname">'+esc(r.name)+'</span><span class="score">'+(r.score||70)+'</span></div>'+
+      '<div class="meta">'+tel+mail+esc(r.city||'DFW, TX')+'</div>'+
+      '<div class="chips">'+chips+'</div>'+
+      ev+audioHtml+
+      '<div class="acts">'+
+        '<button class="b go" onclick="approveRep(\''+esc(r.id)+'\',\'sms\')">Approve &amp; Text Onboarding</button>'+
+        '<button class="b good" onclick="approveRep(\''+esc(r.id)+'\',\'email\')">Approve &amp; Email DOC 05</button>'+
+        (!r.voice_sample_url?'<button class="b" onclick="sendAuditionInvite(\''+esc(r.id)+'\')">Text Audition Link</button>':'')+
+        (r.status!=='rejected'?'<button class="b" onclick="dismissRep(\''+esc(r.id)+'\')">Dismiss</button>':'')+
+      '</div></div>';
+  }).join('');
+}
+
+async function approveRep(id,channel){
+  const r=rows.find(x=>String(x.id)===String(id));
+  if(!r)return;
+  if(!dbMissingRepTable){
+    await sb.from('rep_candidates').update({status:'approved'}).eq('id',id);
+  }
+  const local=getLocalRepAuditions();
+  const idx=local.findIndex(x=>String(x.id)===String(id));
+  if(idx>=0){local[idx].status='approved';saveLocalRepAuditions(local);}
+
+  const firstName=(r.name||'').split(' ')[0]||'there';
+  const msg=`Hey ${firstName} — Taylor with Texas Gate Dispatch. Loved your 60-second storage manager voice audition. You're approved to join our 1099 outbound desk ($50 fast-start on your first 10 VOF enrollments + $40/site first dispatch + 20% 12-mo residuals). Review the Independent Rep Agreement here: ${getDocsUrl('d5')} and log into the Rep Calling Console with your email (${r.email}) here: ${getHqUrl()} — reply READY and I'll deal your first 25 DFW storage leads!`;
+
+  if(channel==='sms' && r.phone){
+    window.open('sms:'+r.phone.replace(/[^0-9+]/g,'')+'?&body='+encodeURIComponent(msg),'_blank');
+  }else if(r.email){
+    const subj='Approved: Texas Gate Dispatch 1099 Rep Console + First 25 Leads';
+    window.open('mailto:'+r.email+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(msg),'_blank');
+  }else{
+    navigator.clipboard.writeText(msg);
+    toast('Approved! Onboarding invite copied to clipboard ✓');
+  }
+  toast('Approved '+r.name+'! Add '+r.email+' in Command → Team to deal leads.');
+  loadRepCandidates();
+}
+
+function sendAuditionInvite(id){
+  const r=rows.find(x=>String(x.id)===String(id));
+  if(!r)return;
+  const firstName=(r.name||'').split(' ')[0]||'there';
+  const msg=`Hey ${firstName} — Taylor at Texas Gate Dispatch. To skip the resume/interview and get your first 25 DFW self-storage leads ($40/deal + 20% 12-mo residual), record the 30-second storage manager script here: ${getAuditionUrl()}`;
+  if(r.phone){
+    window.open('sms:'+r.phone.replace(/[^0-9+]/g,'')+'?&body='+encodeURIComponent(msg),'_blank');
+  }else{
+    navigator.clipboard.writeText(msg);
+    toast('Audition invite copied to clipboard ✓');
+  }
+}
+
+async function dismissRep(id){
+  if(!dbMissingRepTable){
+    await sb.from('rep_candidates').update({status:'rejected'}).eq('id',id);
+  }
+  const local=getLocalRepAuditions();
+  const idx=local.findIndex(x=>String(x.id)===String(id));
+  if(idx>=0){local[idx].status='rejected';saveLocalRepAuditions(local);}
+  toast('Candidate dismissed');
+  loadRepCandidates();
+}
+
+async function saveNewRepCandidate(){
+  const name=$('rc-name').value.trim();
+  const phone=$('rc-phone').value.trim();
+  const email=$('rc-email').value.trim().toLowerCase();
+  if(!name||!phone||!email){toast('Name, Phone, and Email are required');return;}
+  const hrs=parseInt($('rc-hrs').value||'20',10);
+  const notes=$('rc-notes').value.trim();
+  let score=65;
+  if(hrs>=20)score+=10;
+  if(/storage|property|b2b|cold|commission/i.test(notes))score+=15;
+
+  const rec={
+    id:'rc_'+Date.now(),
+    name,phone,email,
+    city:$('rc-city').value.trim()||'DFW, TX',
+    source:$('rc-source').value,
+    availability_hrs:hrs,
+    experience_tags:['b2b_cold_calling','commission_ready'],
+    notes,
+    score:Math.min(98,score),
+    status:'new',
+    created_at:new Date().toISOString()
+  };
+
+  if(!dbMissingRepTable){
+    const {error}=await sb.from('rep_candidates').insert([{
+      name:rec.name,phone:rec.phone,email:rec.email,city:rec.city,
+      source:rec.source,availability_hrs:rec.availability_hrs,
+      experience_tags:rec.experience_tags,notes:rec.notes,score:rec.score,status:'new'
+    }]);
+    if(error){
+      const local=getLocalRepAuditions();local.unshift(rec);saveLocalRepAuditions(local);
+    }
+  }else{
+    const local=getLocalRepAuditions();local.unshift(rec);saveLocalRepAuditions(local);
+  }
+  closeModal('addRepModal');
+  $('rc-name').value='';$('rc-phone').value='';$('rc-email').value='';$('rc-notes').value='';
+  toast('Added '+name+' to 1099 Rep Radar ✓');
+  loadRepCandidates();
+}
+
+async function seedSampleReps(){
+  const samples=[
+    {
+      id:'rc_demo_1',
+      name:'Marcus Vance',
+      phone:'214-555-0148',
+      email:'marcus.vance.sales@example.com',
+      city:'Arlington, TX',
+      source:'commissioncrowd',
+      availability_hrs:25,
+      experience_tags:['b2b_cold_calling','property_management','commission_only','texas_local'],
+      notes:'6 yrs B2B commercial roofing & parking lot striping cold calling across DFW. Already calls property & storage managers daily. Loves the $0-cost Vendor-on-File opener.',
+      score:94,
+      status:'audition_submitted'
+    },
+    {
+      id:'rc_demo_2',
+      name:'Elena Rostova',
+      phone:'972-555-0183',
+      email:'elena.outbound@example.com',
+      city:'Plano, TX',
+      source:'craigslist_dfw',
+      availability_hrs:30,
+      experience_tags:['b2b_cold_calling','high_volume_dialer','commission_only'],
+      notes:'Former commercial HVAC dispatch setter (120+ dials/day). Looking for uncapped residual book where regional managers control 5–10 locations.',
+      score:89,
+      status:'audition_submitted'
+    },
+    {
+      id:'rc_demo_3',
+      name:'Devon Brooks',
+      phone:'817-555-0129',
+      email:'devon.b.dfw@example.com',
+      city:'Fort Worth, TX',
+      source:'reddit',
+      availability_hrs:15,
+      experience_tags:['b2b_cold_calling','texas_local'],
+      notes:'Sourced via r/DFWJobs. Inside sales rep with weekday mornings free (9am-1pm CT) to dial Tarrant County storage yards.',
+      score:78,
+      status:'new'
+    }
+  ];
+  const local=getLocalRepAuditions();
+  samples.forEach(s=>{if(!local.some(x=>x.email===s.email))local.push(s);});
+  saveLocalRepAuditions(local);
+  if(!dbMissingRepTable){
+    for(const s of samples){
+      await sb.from('rep_candidates').insert([{
+        name:s.name,phone:s.phone,email:s.email,city:s.city,source:s.source,
+        availability_hrs:s.availability_hrs,experience_tags:s.experience_tags,
+        notes:s.notes,score:s.score,status:s.status
+      }]);
+    }
+  }
+  toast('Loaded 3 sample DFW 1099 rep candidates ✓');
+  loadRepCandidates();
+}
+
 function render(){
-  if(!rows.length){$('list').innerHTML='<div class="empty">No new candidates. Ask Claude to run a sweep.</div>';return;}
+  if(!rows.length){$('list').innerHTML='<div class="empty">No new candidates. Run a sweep or ask Claude/Antigravity.</div>';return;}
   $('list').innerHTML=rows.map(r=>{
     const bd=r.score_breakdown||{};
     const dist=bd.distance_mi?(' · '+bd.distance_mi+' mi'):'';

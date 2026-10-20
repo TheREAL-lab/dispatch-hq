@@ -223,7 +223,7 @@
       <p>Each technician is an independent business, not Coordinator’s employee or agent. The repair itself is contracted directly between Facility and the technician: the technician quotes their own rates, performs the work, warrants the work on their own terms, and <strong>invoices Facility directly</strong>. Coordinator does not perform or supervise repairs and never handles repair funds.</p>
 
       <h3>4. Coordination Fee</h3>
-      <p>Facility pays Coordinator a flat coordination fee of <span class="fill">[$89]</span> per dispatch. The fee is earned when the assigned technician arrives at the Facility. No fee is due if Coordinator cannot source a technician or the technician fails to arrive. Invoices are due net fifteen (15) days.</p>
+      <p>Facility pays Coordinator a flat coordination fee of <span class="fill">[$89]</span> per standard dispatch (<span class="fill">[$149]</span> for same-day emergency rush dispatches). There is no monthly retainer or membership fee to remain on Coordinator’s priority dispatch roster. The coordination fee is earned when the assigned technician arrives at the Facility. No fee is due if Coordinator cannot source a technician or the technician fails to arrive. Invoices are payable upon receipt (net fifteen (15) days maximum) via Zelle, ACH, card link, or check.</p>
 
       <h3>5. Liability</h3>
       <p>Facility’s remedy for any issue with repair work lies against the technician who performed it. Coordinator’s total liability to Facility will not exceed the coordination fees paid by Facility in the three (3) months before the claim. Neither party is liable for indirect, incidental, consequential, or lost-profit damages.</p>
@@ -254,24 +254,24 @@
     </div>
     <article class="sheet" id="d3">
       <h2 class="dtitle">Invoice</h2>
-      <div class="dsub">Texas Gate Dispatch · Taylor Keup · <span class="fill">[MAILING ADDRESS]</span> · <span class="fill">[PHONE]</span> · <span class="fill">[EMAIL]</span></div>
+      <div class="dsub">Texas Gate Dispatch · Taylor Keup · <span class="fill">Addison / North DFW, TX</span> · <span class="fill">469-400-1081</span> · <span class="fill">taylorkeup1@gmail.com</span></div>
 
-      <p><span class="kicker">Invoice №</span> <span class="fill">[TGD-2026-001]</span>&nbsp;&nbsp;&nbsp;<span class="kicker">Date</span> <span class="fill">[DATE]</span>&nbsp;&nbsp;&nbsp;<span class="kicker">Terms</span> Net 15</p>
-      <p><span class="kicker">Bill to</span><br><span class="fill">[FACILITY NAME]</span><br><span class="fill">[FACILITY BILLING ADDRESS]</span></p>
+      <p><span class="kicker">Invoice №</span> <span class="fill" id="inv-no">[TGD-2026-001]</span>&nbsp;&nbsp;&nbsp;<span class="kicker">Date</span> <span class="fill" id="inv-date">[DATE]</span>&nbsp;&nbsp;&nbsp;<span class="kicker">Terms</span> Due on Receipt / Net 15</p>
+      <p><span class="kicker">Bill to</span><br><span class="fill" id="inv-fac">[FACILITY NAME]</span><br><span class="fill" id="inv-addr">[FACILITY BILLING ADDRESS]</span></p>
 
       <table class="inv">
         <thead><tr><th>Description</th><th style="width:110px">Amount</th></tr></thead>
         <tbody>
           <tr>
-            <td>Dispatch coordination fee — <span class="fill">[equipment / issue]</span>, work order <span class="fill">[WO #]</span>, technician dispatched <span class="fill">[DATE]</span>.<br>
+            <td>Dispatch coordination fee — <span class="fill" id="inv-desc">[equipment / issue]</span>, work order <span class="fill" id="inv-wo">[WO #]</span>, technician dispatched <span class="fill" id="inv-dispdate">[DATE]</span>.<br>
             <em>Repair work is billed to you separately and directly by the technician.</em></td>
-            <td class="amount"><span class="fill">$89.00</span></td>
+            <td class="amount"><span class="fill" id="inv-amt">$89.00</span></td>
           </tr>
-          <tr><td style="text-align:right"><strong>Total due</strong></td><td class="amount"><strong><span class="fill">$89.00</span></strong></td></tr>
+          <tr><td style="text-align:right"><strong>Total due</strong></td><td class="amount"><strong><span class="fill" id="inv-tot">$89.00</span></strong></td></tr>
         </tbody>
       </table>
 
-      <p><span class="kicker">Payment</span> — Check payable to <span class="fill">[Taylor Keup]</span>, or Zelle to <span class="fill">[PHONE / EMAIL]</span>. Please reference the invoice number. Questions: <span class="fill">[PHONE]</span>.</p>
+      <p><span class="kicker">Payment</span> — Zelle to <span class="fill">469-400-1081 (Taylor Keup)</span>, or check payable to <span class="fill">Taylor Keup</span>. Please reference the invoice number. Questions: <span class="fill">469-400-1081</span>.</p>
       <p style="margin-top:16px; color:#555; font-size:12.5px">Thank you — we’ll be here the next time a gate won’t close.</p>
     </article>
   </section>
@@ -312,7 +312,7 @@
         <li>You invoice the facility directly and get paid on your terms.</li>
       </ol>
 
-      <p style="margin-top:14px">Questions: <span class="fill">[PHONE]</span> · <span class="fill">[EMAIL]</span></p>
+      <p style="margin-top:14px">Questions: <span class="fill">469-400-1081</span> · <span class="fill">taylorkeup1@gmail.com</span></p>
     </article>
   </section>
 
@@ -336,16 +336,17 @@
       <h3>2. Scope of Engagement</h3>
       <p>Representative will conduct outreach to prospective client facilities identified in Company’s prospect system, present Company’s dispatch coordination service accurately, and log call outcomes in Company’s system. Representative <strong>may not</strong>: (a) sign any contract on Company’s behalf; (b) set, discount, or promise pricing other than Company’s published coordination fee; (c) promise repair outcomes, timelines, or warranties; (d) collect or handle any funds; or (e) represent that Company performs repairs or handles repair payments. Representative will describe the service consistently with Company’s coordinator model: independent technicians contract with and bill facilities directly, and Company charges only a flat coordination fee.</p>
 
-      <h3>3. Commission</h3>
+      <h3>3. Commission &amp; Multi-Property Attribution</h3>
       <p>Company will pay Representative:</p>
       <ol>
-        <li><strong>Account bounty:</strong> <span class="fill">[$40]</span> when a facility first closed by Representative pays its first coordination fee to Company; and</li>
-        <li><strong>Trailing commission:</strong> <span class="fill">[20]</span>% of each coordination fee <strong>actually collected</strong> by Company from that facility for dispatches requested within <span class="fill">[12]</span> months after the close date.</li>
+        <li><strong>Account bounty:</strong> <span class="fill">[$40]</span> when a facility first enrolled or closed by Representative pays its first coordination fee to Company; and</li>
+        <li><strong>Trailing commission:</strong> <span class="fill">[20]</span>% of each coordination fee <strong>actually collected</strong> by Company from that facility for dispatches requested within <span class="fill">[12]</span> months after the enrollment/close date (including on both the initial dispatch and all repeat dispatches during the 12-month window).</li>
+        <li><strong>Multi-Property Operator Multiplier:</strong> If Representative closes a regional manager or operator group overseeing multiple self-storage locations, each individual facility location enrolled under that operator is credited to Representative and qualifies separately for both the Account Bounty in Section 3(1) and the 12-month Trailing Commission in Section 3(2).</li>
       </ol>
-      <p>A facility is “closed by Representative” when it is recorded as a client in Company’s system with Representative credited as the closer. Commissions accrue only on coordination fees actually collected (not on technician repair charges, which never pass through Company), and are reduced or reversed for refunds or uncollected invoices. No commission is owed on facilities with a documented pre-existing relationship with Company. Commissions are paid monthly, by the 10th, for the prior calendar month, with a statement of the underlying dispatches.</p>
+      <p>A facility is “closed by Representative” when it is recorded as an enrolled vendor-on-file (`vendor_on_file`) or active client (`client`) in Company’s system with Representative credited as the closer. Commissions accrue only on coordination fees actually collected (not on technician repair charges, which never pass through Company), and are reduced or reversed for refunds or uncollected invoices. No commission is owed on facilities with a documented pre-existing relationship with Company. Commissions are paid monthly, by the 10th, for the prior calendar month, with a statement of the underlying dispatches.</p>
 
       <h3>4. Post-Termination Trail</h3>
-      <p>Either party may end this Agreement at any time with written notice (email suffices). For facilities closed by Representative before termination, the trailing commission in Section 3(b) continues to accrue and be paid for the remainder of each facility’s commission window, on fees actually collected. This survives termination.</p>
+      <p>Either party may end this Agreement at any time with written notice (email suffices). For facilities closed by Representative before termination, the trailing commission in Section 3(2) continues to accrue and be paid for the remainder of each facility’s commission window, on fees actually collected. This survives termination.</p>
 
       <h3>5. Confidentiality</h3>
       <p>Company’s prospect lists, facility data, call outcomes, pricing, and business processes are confidential. Representative will use them solely to perform under this Agreement and will not disclose them or use them for any other business. This obligation survives termination.</p>
@@ -367,7 +368,7 @@
         <li><strong>Signed copy of this Agreement</strong></li>
         <li><strong>Completed IRS Form W-9</strong> (irs.gov)</li>
         <li><strong>Best cell number</strong> for lead assignments</li>
-        <li><strong>One script run-through</strong> with Company before first live call</li>
+        <li><strong>60-second voice pitch check</strong> (<a href="audition.html">audition.html</a>)</li>
       </ul>
 
       <div class="sigrow">
@@ -385,7 +386,7 @@
 
   <footer class="pagefoot">
     <p><strong>Also in your kit (not printable from here):</strong> your own IRS Form W-9 — facilities that pay coordination fees may request it; download the current form at irs.gov and keep a filled copy ready. And the standing to-do: file <strong>Texas Gate Dispatch LLC</strong> (Texas SOSDirect, $300 filing fee) before signing these with real counterparties, then re-execute or assign under the LLC.</p>
-    <p style="margin-top:8px">Tech license verification: <a href="https://tops.portal.texas.gov/psp-self-service/search/index" target="_blank" rel="noopener">Texas DPS TOPS — Search Licensees</a></p>
+    <p style="margin-top:8px">Tech license verification: <a href="https://tops.portal.texas.gov/psp-self-service/search/index" target="_blank" rel="noopener">Texas DPS TOPS — Search Licensees</a> · <a href="index.html">← Back to Dispatch HQ</a></p>
   </footer>
 </div>
 
@@ -406,6 +407,35 @@
       btn.textContent = 'Copy failed — select & copy manually';
     });
   }
+
+  (function prefillFromQuery(){
+    var q = new URLSearchParams(location.search);
+    var today = new Date().toLocaleDateString('en-US', {year:'numeric', month:'short', day:'numeric'});
+    if(q.get('facility')) document.getElementById('inv-fac').textContent = q.get('facility');
+    if(q.get('city')) document.getElementById('inv-addr').textContent = q.get('city') + ', TX';
+    if(q.get('wo')){
+      document.getElementById('inv-wo').textContent = q.get('wo');
+      document.getElementById('inv-no').textContent = q.get('wo');
+    }
+    var equip = q.get('equip') || '';
+    var issue = q.get('issue') || '';
+    if(equip || issue){
+      document.getElementById('inv-desc').textContent = equip + (issue ? ' (' + issue + ')' : '');
+    }
+    if(q.get('fee')){
+      var amt = '$' + parseFloat(q.get('fee')).toFixed(2);
+      document.getElementById('inv-amt').textContent = amt;
+      document.getElementById('inv-tot').textContent = amt;
+    }
+    document.getElementById('inv-date').textContent = today;
+    document.getElementById('inv-dispdate').textContent = q.get('date') || today;
+    var doc = q.get('doc');
+    if(doc && document.getElementById('wrap-' + doc)){
+      setTimeout(function(){
+        document.getElementById('wrap-' + doc).scrollIntoView({behavior:'smooth'});
+      }, 150);
+    }
+  })();
 </script>
 </body>
 </html>
