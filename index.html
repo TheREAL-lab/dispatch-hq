@@ -7,7 +7,8 @@
 <title>Dispatch HQ — Texas Gate Dispatch</title>
 <!-- DHQ v2.1 command console -->
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
 :root{--bg:#141414;--panel:#1d1d1d;--line:#2c2c2c;--orange:#ff6a00;--hazard:#ffc400;--dim:#9a9a9a;
 --bright:#f2f2f2;--good:#2ecc71;--bad:#ff5c5c}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -126,7 +127,9 @@ table.t th{color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spa
 <script>
 const SB_URL='https://teptzyvzuenolwtfosht.supabase.co', SB_KEY='sb_publishable_4LgHf6k24QMus_1nvHPgSg__3rjqh52';
 let sb, me={role:null,uid:null,email:null,scope:'all'}, view='command', signup=false;
-let F=[], T=[], D=[], O=[], STAFF=[], FEE=89, pipeFilter='queue', jobFilter='active';
+let F=[], T=[], D=[], O=[], STAFF=[], COMM=[], SET={}, FEE=89, pipeFilter='queue', jobFilter='active';
+const myLeads=()=>me.role==='owner'?F:F.filter(f=>f.assigned_to===me.uid||!f.assigned_to);
+const repName=uid=>{const s=STAFF.find(x=>x.user_id===uid);return s?(s.full_name||s.email.split('@')[0]):'rep'};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const toast=m=>{const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400)};
@@ -189,17 +192,21 @@ async function loadAll(){
     sb.from('techs').select('*'),
     sb.from('dispatches').select('*').order('created_at',{ascending:false}),
     sb.from('outreach_log').select('*').order('contacted_at',{ascending:false}).limit(400),
-    sb.from('app_settings').select('*').eq('key','booking_fee_usd')
+    sb.from('app_settings').select('*'),
+    sb.from('rep_commissions').select('*')
   ];
   if(me.role==='owner')q.push(sb.from('dispatch_staff').select('*'));
   const r=await Promise.all(q);
   F=r[0].data||[]; T=r[1].data||[]; D=r[2].data||[]; O=r[3].data||[];
-  FEE=parseFloat((r[4].data?.[0]?.value)||'89');
-  if(me.role==='owner')STAFF=r[5].data||[];
+  SET={};(r[4].data||[]).forEach(s=>SET[s.key]=s.value);
+  FEE=parseFloat(SET.booking_fee_usd||'89');
+  COMM=r[5].data||[];
+  if(me.role==='owner')STAFF=r[6].data||[];
 }
 async function refresh(){await loadAll();render()}
 const fac=id=>F.find(f=>f.id===id)||{}; const tech=id=>T.find(t=>t.id===id)||{};
 
+/* ---------- RENDER ---------- */
 function render(){
   const v=$('view');
   if(view==='command')v.innerHTML=rCommand();
@@ -220,7 +227,7 @@ function kpis(){
 }
 function rCommand(){
   const k=kpis();
-  const due=F.filter(f=>['not_called','no_answer'].includes(f.call_status)||
+  const due=myLeads().filter(f=>['not_called','no_answer'].includes(f.call_status)||
     (f.follow_up_date&&f.follow_up_date<=new Date().toISOString().slice(0,10)&&f.call_status!=='client'))
     .sort((a,b)=>((a.follow_up_date||'9')> (b.follow_up_date||'9')?1:-1)||(PRI_ORD[a.priority]-PRI_ORD[b.priority])).slice(0,25);
   const act=D.filter(d=>!['approved','cancelled'].includes(d.status));
@@ -238,6 +245,7 @@ function rCommand(){
 function cardFac(f){
   return '<div class="card" onclick="openFac(\''+f.id+'\')"><div class="r1">'+
    '<span class="pri '+esc(f.priority)+'">'+esc(f.priority)+'</span><span class="nm">'+esc(f.name)+'</span>'+
+   (me.role==='owner'&&f.assigned_to?'<span class="st">'+esc(repName(f.assigned_to))+'</span>':'')+
    '<span class="rt">'+(f.follow_up_date?('follow up '+fmt(f.follow_up_date)):esc(f.call_status.replace('_',' ')))+'</span></div>'+
    '<div class="meta">'+(f.phone?'<a href="tel:'+esc(f.phone)+'" onclick="event.stopPropagation()">'+esc(f.phone)+'</a> · ':'')+
    esc(f.city||'')+(f.pain_points?' · '+esc(f.pain_points.slice(0,70)):'')+'</div></div>';
@@ -250,14 +258,17 @@ function cardJob(d){
    '<div class="meta">'+esc(d.equipment_kind)+' · '+esc(t.name||'unassigned')+(d.issue?' · '+esc(d.issue.slice(0,60)):'')+'</div></div>';
 }
 function rPipeline(){
-  const groups=['queue','not_called','no_answer','spoke','vendor_on_file','declined','client'];
-  const lbl={queue:'Queue',not_called:'Not called',no_answer:'No answer',spoke:'Spoke',vendor_on_file:'Vendor on file',declined:'Declined',client:'CLIENT'};
-  let list=F.slice();
+  const groups=['queue','mine','not_called','no_answer','spoke','vendor_on_file','declined','client'];
+  const lbl={queue:'Queue',mine:'Mine',not_called:'Not called',no_answer:'No answer',spoke:'Spoke',vendor_on_file:'Vendor on file',declined:'Declined',client:'CLIENT'};
+  const B=myLeads();
+  let list=B.slice();
   if(pipeFilter==='queue')list=list.filter(f=>['not_called','no_answer'].includes(f.call_status));
+  else if(pipeFilter==='mine')list=list.filter(f=>f.assigned_to===me.uid);
   else list=list.filter(f=>f.call_status===pipeFilter);
   list.sort((a,b)=>PRI_ORD[a.priority]-PRI_ORD[b.priority]||a.name.localeCompare(b.name));
   return '<div class="chips">'+groups.map(g=>{
-    const n=g==='queue'?F.filter(f=>['not_called','no_answer'].includes(f.call_status)).length:F.filter(f=>f.call_status===g).length;
+    const n=g==='queue'?B.filter(f=>['not_called','no_answer'].includes(f.call_status)).length:
+      g==='mine'?B.filter(f=>f.assigned_to===me.uid).length:B.filter(f=>f.call_status===g).length;
     return '<button class="'+(pipeFilter===g?'on':'')+'" onclick="pipeFilter=\''+g+'\';render()">'+lbl[g]+' '+n+'</button>'}).join('')+'</div>'+
     (list.length?list.map(cardFac).join(''):'<div class="empty">Nothing here.</div>');
 }
@@ -300,7 +311,32 @@ function rMetrics(){
    ['requested','dispatched','on_site','completed','approved','cancelled'].map(s=>'<tr><td>'+s.replace('_',' ')+'</td><td>'+byStatus(s)+'</td></tr>').join('')+'</table>'+
    '<h2 class="sec">Tech performance ('+done.length+' finished jobs)</h2>'+
    '<div class="kpis"><div class="kpi"><div class="n">'+(done.length?Math.round(ot/done.length*100):0)+'%</div><div class="l">On-time</div></div>'+
-   '<div class="kpi"><div class="n">'+(done.length?Math.round(ft/done.length*100):0)+'%</div><div class="l">First-try approval</div></div></div>';
+   '<div class="kpi"><div class="n">'+(done.length?Math.round(ft/done.length*100):0)+'%</div><div class="l">First-try approval</div></div></div>'+
+   rCommissions();
+}
+function rCommissions(){
+  const mo=new Date().toISOString().slice(0,7);
+  const sum=rows=>rows.reduce((s,c)=>s+(+c.trail_usd||0)+(+c.bounty_usd||0),0);
+  if(me.role!=='owner'){
+    const mine=COMM;
+    return '<h2 class="sec">My commissions</h2><div class="kpis">'+
+     '<div class="kpi"><div class="n">$'+sum(mine.filter(c=>c.month===mo)).toFixed(2)+'</div><div class="l">This month</div></div>'+
+     '<div class="kpi"><div class="n">$'+sum(mine).toFixed(2)+'</div><div class="l">All time</div></div>'+
+     '<div class="kpi"><div class="n">'+new Set(mine.map(c=>c.facility_id)).size+'</div><div class="l">Accounts earning</div></div></div>'+
+     '<div class="note">Paid monthly on fees actually collected: $'+(SET.commission_bounty_usd||40)+' first-fee bounty per account + '+(SET.commission_percent||20)+'% trail for '+(SET.commission_window_months||12)+' months.</div>';
+  }
+  const reps={};
+  COMM.forEach(c=>{(reps[c.rep_id]=reps[c.rep_id]||[]).push(c)});
+  const staffReps=STAFF.filter(s=>s.role!=='pending');
+  if(!staffReps.length&&!Object.keys(reps).length)return '';
+  return '<h2 class="sec">Sales team</h2><table class="t"><tr><th>Rep</th><th>Leads</th><th>Convos</th><th>Clients</th><th>Owed (mo)</th><th>All time</th></tr>'+
+   staffReps.map(s=>{
+     const leads=F.filter(f=>f.assigned_to===s.user_id).length;
+     const convos=F.filter(f=>f.assigned_to===s.user_id&&CONVO.includes(f.call_status)).length;
+     const clients=F.filter(f=>f.closed_by===s.user_id).length;
+     const rows=reps[s.user_id]||[];
+     return '<tr><td>'+esc(s.full_name||s.email)+(s.is_primary?' ★':'')+'</td><td>'+leads+'</td><td>'+convos+'</td><td>'+clients+
+      '</td><td>$'+sum(rows.filter(c=>c.month===mo)).toFixed(2)+'</td><td>$'+sum(rows).toFixed(2)+'</td></tr>'}).join('')+'</table>';
 }
 function rTeam(){
   return (STAFF.length?'<table class="t"><tr><th>Name</th><th>Role</th><th>Scope</th><th></th></tr>'+
@@ -314,9 +350,15 @@ function rTeam(){
 function rSettings(){
   return '<label>Coordination fee (USD)</label><div class="row"><input id="feeIn" type="number" value="'+FEE+'">'+
    '<button class="b go" onclick="saveFee()">Save</button></div>'+
-   '<div class="note">Fee auto-fills on every new dispatch. Docs kit: <a href="docs.html" style="color:var(--hazard)">agreements &amp; invoice</a>.</div>';
+   '<h2 class="sec">Commission plan</h2><div class="row">'+
+   '<div><label>Account bounty $</label><input id="cB" type="number" value="'+(SET.commission_bounty_usd||40)+'"></div>'+
+   '<div><label>Trail %</label><input id="cP" type="number" value="'+(SET.commission_percent||20)+'"></div>'+
+   '<div><label>Window (months)</label><input id="cW" type="number" value="'+(SET.commission_window_months||12)+'"></div></div>'+
+   '<button class="b go" onclick="saveComm()">Save commission plan</button>'+
+   '<div class="note">Fee auto-fills on every new dispatch. Commission plan feeds the ledger in Metrics and DOC 05 in the <a href="docs.html" style="color:var(--hazard)">Docs kit</a>.</div>';
 }
 
+/* ---------- DRAWERS ---------- */
 function openDrawer(html){$('drawer').innerHTML=html;$('drawer').classList.add('open');$('scrim').classList.add('open')}
 function closeDrawer(){$('drawer').classList.remove('open');$('scrim').classList.remove('open')}
 function dh(t){return '<div class="dh"><span class="t">'+t+'</span><button class="x" onclick="closeDrawer()">×</button></div>'}
@@ -331,6 +373,8 @@ function openFac(id){
    '</select></div><div><label>Priority</label><select id="f_pr">'+
    ['HOT','WARM','STANDARD','STRATEGIC'].map(s=>'<option '+(f.priority===s?'selected':'')+'>'+s+'</option>').join('')+'</select></div>'+
    '<div><label>Follow up</label><input id="f_fu" type="date" value="'+(f.follow_up_date||'')+'"></div></div>'+
+   (me.role==='owner'?'<label>Assigned rep</label><select id="f_as"><option value="">— unassigned —</option>'+
+    STAFF.filter(s=>s.role!=='pending').map(s=>'<option value="'+s.user_id+'" '+(f.assigned_to===s.user_id?'selected':'')+'>'+esc(s.full_name||s.email)+'</option>').join('')+'</select>':'')+
    '<label>Contact</label><input id="f_ct" value="'+esc(f.contact_name||'')+'">'+
    '<label>Current vendor</label><input id="f_cv" value="'+esc(f.current_vendor||'')+'">'+
    '<label>Pain points</label><textarea id="f_pp" rows="2">'+esc(f.pain_points||'')+'</textarea>'+
@@ -347,9 +391,11 @@ function openFac(id){
      fmt(o.contacted_at)+' · '+esc(o.channel)+(o.spoke_with?' · '+esc(o.spoke_with):'')+(o.outcome?' — '+esc(o.outcome):'')+'</div>').join('')||'');
 }
 async function saveFac(id){
-  const {error}=await sb.from('facilities').update({call_status:$('f_cs').value,priority:$('f_pr').value,
+  const upd={call_status:$('f_cs').value,priority:$('f_pr').value,
    follow_up_date:$('f_fu').value||null,contact_name:$('f_ct').value||null,current_vendor:$('f_cv').value||null,
-   pain_points:$('f_pp').value||null,notes:$('f_no').value||null}).eq('id',id);
+   pain_points:$('f_pp').value||null,notes:$('f_no').value||null};
+  if($('f_as'))upd.assigned_to=$('f_as').value||null;
+  const {error}=await sb.from('facilities').update(upd).eq('id',id);
   if(error){toast(error.message);return}
   toast('Saved ✓');closeDrawer();refresh();
 }
@@ -406,6 +452,7 @@ function openJob(id){
    '</div>');
 }
 async function saveJob(id){
+  const d=D.find(x=>x.id===id);
   const upd={tech_id:$('jd_t').value||null,photo_evidence_url:$('jd_ph').value||null,notes:$('jd_no').value||null};
   if($('jd_ot'))upd.on_time=$('jd_ot').checked;
   if($('jd_ft'))upd.first_try_approval=$('jd_ft').checked;
@@ -461,6 +508,14 @@ async function dropStaff(uid){if(!confirm('Remove this person\'s access?'))retur
 async function saveFee(){const v=$('feeIn').value;
   const {error}=await sb.from('app_settings').update({value:String(v)}).eq('key','booking_fee_usd');
   if(error){toast(error.message);return} FEE=parseFloat(v);toast('Fee saved ✓')}
+async function saveComm(){
+  const pairs=[['commission_bounty_usd',$('cB').value],['commission_percent',$('cP').value],['commission_window_months',$('cW').value]];
+  for(const [k,v] of pairs){
+    const {error}=await sb.from('app_settings').update({value:String(v)}).eq('key',k);
+    if(error){toast(error.message);return}
+    SET[k]=String(v);
+  }
+  toast('Commission plan saved ✓')}
 
 boot();
 </script>
