@@ -45,18 +45,22 @@ declare
   v_group_rep uuid;
 begin
   -- Employees (1099 reps) may claim an unassigned lead but not reassign or
-  -- re-attribute anyone else's. Skipped for nested updates made by
+  -- re-attribute anyone else's, and only the owner sets operator_group (it drives
+  -- cross-crediting below, so a rep retagging a facility could otherwise claim a
+  -- whole group they never worked). Skipped for nested updates made by
   -- fn_facility_operator_group_lock below.
   if v_role = 'employee' and pg_trigger_depth() = 1 then
     if tg_op = 'INSERT' then
       new.closed_by := null;
       new.closed_at := null;
+      new.operator_group := null;
       if new.assigned_to is distinct from v_uid then
         new.assigned_to := null;
       end if;
     else
       new.closed_by := old.closed_by;
       new.closed_at := old.closed_at;
+      new.operator_group := old.operator_group;
       if new.assigned_to is distinct from old.assigned_to
          and not (old.assigned_to is null and new.assigned_to = v_uid) then
         new.assigned_to := old.assigned_to;

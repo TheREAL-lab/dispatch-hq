@@ -19,7 +19,7 @@ See also the workspace master guide at [`../CLAUDE.md`](../CLAUDE.md).
 - **Storage:** private bucket `rep-auditions` — applicants upload to `auditions/…`; only the owner can read (Radar uses signed URLs).
 
 ## 2. Sales Force Migration
-[`supabase/migrations/20261020_rep_sales_force_and_recruiting.sql`](./supabase/migrations/20261020_rep_sales_force_and_recruiting.sql) is **applied** to the live project (as `rep_sales_force_and_recruiting` + `rep_vof_milestones_security_invoker`). It provides:
-1. `facilities.enrolled_at` / `operator_group` and the `trg_facility_rep_attribution` trigger: reps auto-claim unassigned leads they work, closer attribution locks on `vendor_on_file`/`client`, and reps cannot reassign or re-attribute other reps' facilities.
+[`supabase/migrations/20261020_rep_sales_force_and_recruiting.sql`](./supabase/migrations/20261020_rep_sales_force_and_recruiting.sql) is **applied** to the live project (as `rep_sales_force_and_recruiting`, `rep_vof_milestones_security_invoker` and `operator_group_owner_only`). It provides:
+1. `facilities.enrolled_at` / `operator_group` and the `trg_facility_rep_attribution` trigger: reps auto-claim unassigned leads they work, closer attribution locks on `vendor_on_file`/`client`, and reps cannot reassign or re-attribute other reps' facilities or change `operator_group` (owner-only).
 2. Multi-Property Operator Multiplier (`trg_facility_operator_group_lock_*`): closing one location credits every unattributed location in the same `operator_group` to that rep.
 3. `rep_vof_milestones` view, `rep_candidates` table + RLS, and the `rep-auditions` bucket + policies.

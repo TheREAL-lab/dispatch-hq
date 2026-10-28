@@ -541,7 +541,7 @@ function openFac(id){
    repSelects+
    '<div class="row"><div><label>Decision Maker / Contact</label><input id="f_ct" placeholder="Name &amp; role / direct email" value="'+esc(f.contact_name||'')+'"></div>'+
    '<div><label>Current Gate Vendor</label><input id="f_cv" placeholder="Who do they use now?" value="'+esc(f.current_vendor||'')+'"></div>'+
-   '<div><label>Operator Group (Multi-Site)</label><input id="f_og" placeholder="e.g. Patriot Storage (4 sites)" value="'+esc(f.operator_group||'')+'"></div></div>'+
+   '<div><label>Operator Group (Multi-Site)</label><input id="f_og" placeholder="e.g. Patriot Storage (4 sites)" value="'+esc(f.operator_group||'')+'"'+(isOwner()?'':' readonly title="Set by the owner"')+'></div></div>'+
    '<label>Pain points &amp; equipment notes</label><textarea id="f_pp" rows="2" placeholder="Gate brand, keypad type, slow response complaints…">'+esc(f.pain_points||'')+'</textarea>'+
    '<label>Internal notes</label><textarea id="f_no" rows="2">'+esc(f.notes||'')+'</textarea>'+
    '<button class="b go" style="width:100%" onclick="saveFac(\''+id+'\')">Save Facility Record</button>'+
@@ -584,7 +584,7 @@ async function saveFac(id){
   }
   if(isOwner()&&['vendor_on_file','client'].includes(newStatus)&&!upd.closed_by&&f.assigned_to)upd.closed_by=f.assigned_to;
   const extUpd=Object.assign({},upd);
-  if($('f_og'))extUpd.operator_group=$('f_og').value.trim()||null;
+  if(isOwner()&&$('f_og'))extUpd.operator_group=$('f_og').value.trim()||null;
   let {error}=await sb.from('facilities').update(extUpd).eq('id',id);
   if(error){
     const retry=await sb.from('facilities').update(upd).eq('id',id);
