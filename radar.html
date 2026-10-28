@@ -286,13 +286,11 @@ async function verifyOwnerAndLoad(){
   load();
 }
 
+const SB_URL='https://teptzyvzuenolwtfosht.supabase.co', SB_KEY='sb_publishable_4LgHf6k24QMus_1nvHPgSg__3rjqh52';
+
 async function boot(){
   try{
-    const src=await fetch('index.html').then(r=>r.text());
-    const url=(src.match(/https:\/\/[a-z0-9]+\.supabase\.co/)||[])[0];
-    const key=(src.match(/sb_publishable_[A-Za-z0-9_\-]+/)||src.match(/eyJ[A-Za-z0-9_\-\.]{60,}/)||[])[0];
-    if(!url||!key){$('booterr').textContent='Could not read connection config from index.html.';return;}
-    sb=window.supabase.createClient(url,key);
+    sb=window.supabase.createClient(SB_URL,SB_KEY);
     const {data:{session}}=await sb.auth.getSession();
     if(session){await verifyOwnerAndLoad();}
     else{$('login').style.display='block';}
@@ -323,8 +321,19 @@ function setRepFilter(f){
   load();
 }
 
+// Maps pre-migration field/status names (still present in older browser-local rows) onto the rep_candidates schema.
+const LEGACY_REP_STATUS={audition_submitted:'auditioned',approved:'promoted',onboarded:'promoted',rejected:'dismissed'};
+function normalizeRep(r){
+  const o=Object.assign({},r);
+  if(o.hours_per_week==null&&o.availability_hrs!=null)o.hours_per_week=o.availability_hrs;
+  if(!o.capabilities&&o.experience_tags)o.capabilities=o.experience_tags;
+  delete o.availability_hrs;delete o.experience_tags;
+  o.status=LEGACY_REP_STATUS[o.status]||o.status||'new';
+  return o;
+}
+const ACTIVE_REP_STATUSES=['new','invited','auditioned'];
 function getLocalRepAuditions(){
-  try{return JSON.parse(localStorage.getItem('dhq_local_rep_auditions')||'[]');}catch(_e){return [];}
+  try{return JSON.parse(localStorage.getItem('dhq_local_rep_auditions')||'[]').map(normalizeRep);}catch(_e){return [];}
 }
 function saveLocalRepAuditions(arr){
   try{localStorage.setItem('dhq_local_rep_auditions',JSON.stringify(arr));}catch(_e){}
@@ -361,12 +370,12 @@ async function loadRepCandidates(){
     if(!seen.has(lr.id)&&!seen.has(lr.email))merged.push(lr);
   });
 
-  const activeCount=merged.filter(r=>r.status==='audition_submitted'||r.status==='new').length;
-  const approvedCount=merged.filter(r=>r.status==='approved'||r.status==='onboarded').length;
+  const activeCount=merged.filter(r=>ACTIVE_REP_STATUSES.includes(r.status)).length;
+  const approvedCount=merged.filter(r=>r.status==='promoted').length;
 
   rows=merged.filter(r=>{
-    if(repFilter==='active')return r.status==='audition_submitted'||r.status==='new';
-    if(repFilter==='approved')return r.status==='approved'||r.status==='onboarded';
+    if(repFilter==='active')return ACTIVE_REP_STATUSES.includes(r.status);
+    if(repFilter==='approved')return r.status==='promoted';
     return true;
   }).sort((a,b)=>(b.score||0)-(a.score||0));
 
@@ -383,19 +392,22 @@ function renderReps(){
     return;
   }
   $('list').innerHTML=rows.map(r=>{
-    const hot=(r.score||0)>=80?' hot':(r.status==='approved'||r.status==='onboarded'?' good':'');
+    const hot=(r.score||0)>=80?' hot':(r.status==='promoted'?' good':'');
     const tel=r.phone?('<a href="tel:'+esc(r.phone)+'">'+esc(r.phone)+'</a> · '):'';
     const mail=r.email?('<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a> · '):'';
-    let chips='<span class="chip '+(r.status==='approved'||r.status==='onboarded'?'good':'lic')+'">'+esc(r.status||'new')+'</span>';
+    let chips='<span class="chip '+(r.status==='promoted'?'good':'lic')+'">'+esc(r.status||'new')+'</span>';
     if(r.source)chips+='<span class="chip">'+esc(r.source)+'</span>';
-    if(r.availability_hrs)chips+='<span class="chip">'+esc(r.availability_hrs)+' hrs/wk</span>';
-    (r.experience_tags||[]).forEach(t=>chips+='<span class="chip pain">'+esc(String(t).replace(/_/g,' '))+'</span>');
+    if(r.hours_per_week)chips+='<span class="chip">'+esc(r.hours_per_week)+' hrs/wk</span>';
+    (r.capabilities||[]).forEach(t=>chips+='<span class="chip pain">'+esc(String(t).replace(/_/g,' '))+'</span>');
 
-    const ev=r.notes?'<div class="ev">“'+esc(r.notes)+'”</div>':'';
+    const blurb=r.notes||r.experience_summary;
+    const ev=blurb?'<div class="ev">“'+esc(blurb)+'”</div>':'';
     let audioHtml='';
     if(r.voice_sample_url){
       audioHtml='<div class="audio-box"><div class="lbl">🎙 60-Second Storage Manager Voice Audition</div>'+
-        '<audio controls preload="none" src="'+esc(r.voice_sample_url)+'"></audio></div>';
+        (/^(https?:|data:)/i.test(r.voice_sample_url)
+          ?'<audio controls preload="none" src="'+esc(r.voice_sample_url)+'"></audio></div>'
+          :'<audio controls preload="none" data-audition="'+esc(r.voice_sample_url)+'"></audio></div>');
     }else{
       audioHtml='<div class="audio-box" style="border-style:dashed"><div class="lbl" style="color:var(--dim)">No voice sample recorded yet — send audition link below</div></div>';
     }
@@ -409,20 +421,25 @@ function renderReps(){
         '<button class="b go" onclick="approveRep(\''+esc(r.id)+'\',\'sms\')">Approve &amp; Text Onboarding</button>'+
         '<button class="b good" onclick="approveRep(\''+esc(r.id)+'\',\'email\')">Approve &amp; Email DOC 05</button>'+
         (!r.voice_sample_url?'<button class="b" onclick="sendAuditionInvite(\''+esc(r.id)+'\')">Text Audition Link</button>':'')+
-        (r.status!=='rejected'?'<button class="b" onclick="dismissRep(\''+esc(r.id)+'\')">Dismiss</button>':'')+
+        (r.status!=='dismissed'?'<button class="b" onclick="dismissRep(\''+esc(r.id)+'\')">Dismiss</button>':'')+
       '</div></div>';
   }).join('');
+  signAuditionAudio();
+}
+
+// In-browser recordings are private objects in the rep-auditions bucket; give the owner short-lived links.
+async function signAuditionAudio(){
+  const els=[...document.querySelectorAll('audio[data-audition]')];
+  if(!els.length)return;
+  const {data,error}=await sb.storage.from('rep-auditions').createSignedUrls(els.map(el=>el.dataset.audition),3600);
+  if(error)return;
+  (data||[]).forEach((d,i)=>{if(d.signedUrl)els[i].src=d.signedUrl;});
 }
 
 async function approveRep(id,channel){
   const r=rows.find(x=>String(x.id)===String(id));
   if(!r)return;
-  if(!dbMissingRepTable){
-    await sb.from('rep_candidates').update({status:'approved'}).eq('id',id);
-  }
-  const local=getLocalRepAuditions();
-  const idx=local.findIndex(x=>String(x.id)===String(id));
-  if(idx>=0){local[idx].status='approved';saveLocalRepAuditions(local);}
+  if(!(await setRepStatus(id,'promoted')))return;
 
   const firstName=(r.name||'').split(' ')[0]||'there';
   const msg=`Hey ${firstName} — Taylor with Texas Gate Dispatch. Loved your 60-second storage manager voice audition. You're approved to join our 1099 outbound desk ($50 fast-start on your first 10 VOF enrollments + $40/site first dispatch + 20% 12-mo residuals). Review the Independent Rep Agreement here: ${getDocsUrl('d5')} and log into the Rep Calling Console with your email (${r.email}) here: ${getHqUrl()} — reply READY and I'll deal your first 25 DFW storage leads!`;
@@ -444,6 +461,7 @@ function sendAuditionInvite(id){
   const r=rows.find(x=>String(x.id)===String(id));
   if(!r)return;
   const firstName=(r.name||'').split(' ')[0]||'there';
+  if(r.status==='new')setRepStatus(id,'invited').then(ok=>{if(ok)loadRepCandidates();});
   const msg=`Hey ${firstName} — Taylor at Texas Gate Dispatch. To skip the resume/interview and get your first 25 DFW self-storage leads ($40/deal + 20% 12-mo residual), record the 30-second storage manager script here: ${getAuditionUrl()}`;
   if(r.phone){
     window.open('sms:'+r.phone.replace(/[^0-9+]/g,'')+'?&body='+encodeURIComponent(msg),'_blank');
@@ -453,13 +471,18 @@ function sendAuditionInvite(id){
   }
 }
 
-async function dismissRep(id){
-  if(!dbMissingRepTable){
-    await sb.from('rep_candidates').update({status:'rejected'}).eq('id',id);
-  }
+async function setRepStatus(id,status){
   const local=getLocalRepAuditions();
   const idx=local.findIndex(x=>String(x.id)===String(id));
-  if(idx>=0){local[idx].status='rejected';saveLocalRepAuditions(local);}
+  if(idx>=0){local[idx].status=status;saveLocalRepAuditions(local);return true;}
+  if(dbMissingRepTable)return true;
+  const {error}=await sb.from('rep_candidates').update({status}).eq('id',id);
+  if(error){toast('Could not update candidate: '+error.message);return false;}
+  return true;
+}
+
+async function dismissRep(id){
+  if(!(await setRepStatus(id,'dismissed')))return;
   toast('Candidate dismissed');
   loadRepCandidates();
 }
@@ -480,8 +503,8 @@ async function saveNewRepCandidate(){
     name,phone,email,
     city:$('rc-city').value.trim()||'DFW, TX',
     source:$('rc-source').value,
-    availability_hrs:hrs,
-    experience_tags:['b2b_cold_calling','commission_ready'],
+    hours_per_week:hrs,
+    capabilities:['b2b_cold_calling','commission_ready'],
     notes,
     score:Math.min(98,score),
     status:'new',
@@ -491,8 +514,8 @@ async function saveNewRepCandidate(){
   if(!dbMissingRepTable){
     const {error}=await sb.from('rep_candidates').insert([{
       name:rec.name,phone:rec.phone,email:rec.email,city:rec.city,
-      source:rec.source,availability_hrs:rec.availability_hrs,
-      experience_tags:rec.experience_tags,notes:rec.notes,score:rec.score,status:'new'
+      source:rec.source,hours_per_week:rec.hours_per_week,
+      capabilities:rec.capabilities,notes:rec.notes,score:rec.score,status:'new'
     }]);
     if(error){
       const local=getLocalRepAuditions();local.unshift(rec);saveLocalRepAuditions(local);
@@ -515,11 +538,11 @@ async function seedSampleReps(){
       email:'marcus.vance.sales@example.com',
       city:'Arlington, TX',
       source:'commissioncrowd',
-      availability_hrs:25,
-      experience_tags:['b2b_cold_calling','property_management','commission_only','texas_local'],
+      hours_per_week:25,
+      capabilities:['b2b_cold_calling','property_management','commission_only','texas_local'],
       notes:'6 yrs B2B commercial roofing & parking lot striping cold calling across DFW. Already calls property & storage managers daily. Loves the $0-cost Vendor-on-File opener.',
       score:94,
-      status:'audition_submitted'
+      status:'auditioned'
     },
     {
       id:'rc_demo_2',
@@ -528,11 +551,11 @@ async function seedSampleReps(){
       email:'elena.outbound@example.com',
       city:'Plano, TX',
       source:'craigslist_dfw',
-      availability_hrs:30,
-      experience_tags:['b2b_cold_calling','high_volume_dialer','commission_only'],
+      hours_per_week:30,
+      capabilities:['b2b_cold_calling','high_volume_dialer','commission_only'],
       notes:'Former commercial HVAC dispatch setter (120+ dials/day). Looking for uncapped residual book where regional managers control 5–10 locations.',
       score:89,
-      status:'audition_submitted'
+      status:'auditioned'
     },
     {
       id:'rc_demo_3',
@@ -541,8 +564,8 @@ async function seedSampleReps(){
       email:'devon.b.dfw@example.com',
       city:'Fort Worth, TX',
       source:'reddit',
-      availability_hrs:15,
-      experience_tags:['b2b_cold_calling','texas_local'],
+      hours_per_week:15,
+      capabilities:['b2b_cold_calling','texas_local'],
       notes:'Sourced via r/DFWJobs. Inside sales rep with weekday mornings free (9am-1pm CT) to dial Tarrant County storage yards.',
       score:78,
       status:'new'
@@ -555,7 +578,7 @@ async function seedSampleReps(){
     for(const s of samples){
       await sb.from('rep_candidates').insert([{
         name:s.name,phone:s.phone,email:s.email,city:s.city,source:s.source,
-        availability_hrs:s.availability_hrs,experience_tags:s.experience_tags,
+        hours_per_week:s.hours_per_week,capabilities:s.capabilities,
         notes:s.notes,score:s.score,status:s.status
       }]);
     }
