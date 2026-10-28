@@ -269,13 +269,12 @@ async function submitAudition(){
     status:vurl?'auditioned':'new'
   };
 
-  let {error}=await sb.from('rep_candidates').insert(row);
+  const {error}=await sb.from('rep_candidates').insert(row);
   if(error){
-    try{
-      const saved=JSON.parse(localStorage.getItem('dhq_local_rep_candidates')||'[]');
-      saved.unshift(Object.assign({id:'loc-'+Date.now(),created_at:new Date().toISOString()},row));
-      localStorage.setItem('dhq_local_rep_candidates',JSON.stringify(saved));
-    }catch(e){}
+    // A browser-local copy would never reach the owner's Radar, so surface the failure and let the applicant retry.
+    $('subErr').textContent='We could not submit your audition ('+error.message+'). Please try again in a minute.';
+    btn.disabled=false; btn.innerHTML='Submit Audition &amp; Request Rep Seat →';
+    return;
   }
   btn.style.display='none';
   $('okBox').style.display='block';

@@ -76,7 +76,7 @@ python3 agents/recruiting_swarm.py sweep-leads --push
    - Check that they sound sharp, unscripted, and natural delivering the *"keep our card on the corkboard as your free backup"* hook.
 2. **1-Click Approve & Invite:**
    - Click **Approve & Text Onboarding** or **Approve & Email DOC 05**.
-   - This automatically marks the candidate `approved` and opens a pre-filled message containing [`docs.html?doc=d5`](../docs.html) (Independent Sales Rep Agreement) and the [`index.html`](../index.html) Console link.
+   - This automatically marks the candidate `promoted` and opens a pre-filled message containing [`docs.html?doc=d5`](../docs.html) (Independent Sales Rep Agreement) and the [`index.html`](../index.html) Console link.
 3. **Activate in Command HQ (`index.html` → `Team` tab):**
    - Add the rep's email under **Staff Roster** with role `employee` (displayed as `1099 Sales Rep`).
    - Click **`+ Deal 25 Leads`** next to their name to assign 25 uncalled, top-scored DFW storage facilities exclusively to their queue (`assigned_to = <rep_email>`).
