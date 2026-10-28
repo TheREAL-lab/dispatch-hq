@@ -144,7 +144,7 @@ table.t th{color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spa
 <script>
 const SB_URL='https://teptzyvzuenolwtfosht.supabase.co', SB_KEY='sb_publishable_4LgHf6k24QMus_1nvHPgSg__3rjqh52';
 let sb, me={role:null,uid:null,email:null,name:null,scope:'all'}, view='command', signup=false;
-let F=[], T=[], D=[], O=[], STAFF=[], COMM=[], SET={}, FEE=89, FEE_RUSH=149, pipeFilter='queue', pipeSearch='', jobFilter='active';
+let F=[], T=[], D=[], O=[], STAFF=[], COMM=[], MILE=[], SET={}, FEE=89, FEE_RUSH=149, pipeFilter='queue', pipeSearch='', jobFilter='active';
 let calcEnroll=12, calcMulti=2;
 const isOwner=()=>me.role==='owner';
 const myLeads=()=>isOwner()?F:F.filter(f=>f.assigned_to===me.uid||f.closed_by===me.uid||!f.assigned_to);
@@ -222,7 +222,8 @@ async function loadAll(){
     sb.from('dispatches').select('*').order('created_at',{ascending:false}),
     sb.from('outreach_log').select('*').order('contacted_at',{ascending:false}).limit(500),
     sb.from('app_settings').select('*'),
-    sb.from('rep_commissions').select('*')
+    sb.from('rep_commissions').select('*'),
+    sb.from('rep_vof_milestones').select('*')
   ];
   if(isOwner()){
     q.push(sb.from('techs').select('*'));
@@ -234,9 +235,10 @@ async function loadAll(){
   FEE=parseFloat(SET.booking_fee_usd||'89');
   FEE_RUSH=parseFloat(SET.emergency_fee_usd||'149');
   COMM=r[4].data||[];
+  MILE=r[5].data||[];
   if(isOwner()){
-    T=r[5].data||[];
-    STAFF=r[6].data||[];
+    T=r[6].data||[];
+    STAFF=r[7].data||[];
     const meStaff=STAFF.find(s=>s.user_id===me.uid);
     if(meStaff&&meStaff.full_name)me.name=meStaff.full_name;
   }else{
@@ -271,7 +273,7 @@ function kpis(){
   const callsToday=O.filter(o=>(o.contacted_at||'').slice(0,10)===today&&myFIds.has(o.facility_id)).length;
   const convos=myOwnedLeads().filter(f=>CONVO.includes(f.call_status)).length;
   const enrolled=myOwnedLeads().filter(f=>['vendor_on_file','client'].includes(f.call_status)).length;
-  const myComm=COMM.filter(c=>c.rep_id===me.uid||!c.rep_id).reduce((s,c)=>s+(+c.bounty_usd||0)+(+c.trail_usd||0),0);
+  const myComm=COMM.filter(c=>c.rep_id===me.uid||!c.rep_id).reduce((s,c)=>s+(+c.bounty_usd||0)+(+c.trail_usd||0),0)+mileBonusFor(me.uid);
   return {callsToday,convos,enrolled,myComm};
 }
 function rCommand(){
@@ -429,6 +431,8 @@ function rMetrics(){
    '<div class="kpi"><div class="n">'+(done.length?Math.round(ft/done.length*100):0)+'%</div><div class="l">First-try approval</div></div></div>'+
    rCommissions();
 }
+// Fast-Start VOF bonus earned so far, from the rep_vof_milestones view.
+function mileBonusFor(uid){const m=MILE.find(x=>x.rep_id===uid);return m?(+m.bonus_usd||0):0}
 function rCommissions(){
   const mo=new Date().toISOString().slice(0,7);
   const sum=rows=>rows.reduce((s,c)=>s+(+c.trail_usd||0)+(+c.bounty_usd||0),0);
@@ -437,15 +441,16 @@ function rCommissions(){
     const myVof=myOwnedLeads().filter(f=>['vendor_on_file','client'].includes(f.call_status));
     const mileTarget=+(SET.vof_milestone_count||10);
     const mileBonus=+(SET.vof_milestone_bonus_usd||50);
+    const myMile=MILE.find(x=>x.rep_id===me.uid)||{verified_vof:0,progress:0,milestones_earned:0,bonus_usd:0};
     return '<h2 class="sec">My Commission Ledger</h2><div class="kpis">'+
      '<div class="kpi"><div class="n">$'+sum(mine.filter(c=>c.month===mo)).toFixed(2)+'</div><div class="l">Earned this month</div></div>'+
-     '<div class="kpi"><div class="n">$'+sum(mine).toFixed(2)+'</div><div class="l">All-time earned</div></div>'+
+     '<div class="kpi"><div class="n">$'+(sum(mine)+(+myMile.bonus_usd||0)).toFixed(2)+'</div><div class="l">All-time earned</div></div>'+
      '<div class="kpi"><div class="n">'+myVof.length+'</div><div class="l">Enrolled facilities (VOF/Client)</div></div>'+
      '<div class="kpi"><div class="n">'+new Set(mine.map(c=>c.facility_id)).size+'</div><div class="l">Accounts paying trail</div></div></div>'+
      '<div class="card" style="margin-top:12px;cursor:default">'+
-       '<div class="r1"><span class="nm">Fast-Start Enrollment Milestone ('+(myVof.length%mileTarget)+' / '+mileTarget+' Verified VOFs)</span>'+
-       '<span class="rt" style="color:var(--hazard);font-weight:800">+$'+mileBonus+' Milestone Spiff</span></div>'+
-       '<div class="bar" style="margin-top:8px"><i style="width:'+Math.min(100,((myVof.length%mileTarget)/mileTarget)*100)+'%"></i></div>'+
+       '<div class="r1"><span class="nm">Fast-Start Enrollment Milestone ('+myMile.progress+' / '+mileTarget+' Verified VOFs)</span>'+
+       '<span class="rt" style="color:var(--hazard);font-weight:800">+$'+mileBonus+' Milestone Spiff'+(myMile.milestones_earned?' · $'+(+myMile.bonus_usd).toFixed(0)+' earned':'')+'</span></div>'+
+       '<div class="bar" style="margin-top:8px"><i style="width:'+Math.min(100,(myMile.progress/mileTarget)*100)+'%"></i></div>'+
        '<div class="mut" style="margin-top:6px">Every '+mileTarget+' verified facilities where you log the decision-maker, current vendor, and send our Dispatch Terms unlocks a $'+mileBonus+' fast-start bonus on top of your $'+(SET.commission_bounty_usd||40)+' first-dispatch bounty + '+(SET.commission_percent||20)+'% 12-month trail.</div>'+
      '</div>'+
      '<div class="note">Paid monthly on the 10th for coordination fees actually collected: <strong>$'+(SET.commission_bounty_usd||40)+' first-fee bounty</strong> per facility + <strong>'+(SET.commission_percent||20)+'% trailing commission</strong> for '+(SET.commission_window_months||12)+' months. <a href="docs.html#wrap-d5" target="_blank" style="color:var(--hazard)">View Sales Rep Agreement (DOC 05) ↗</a></div>'+
@@ -462,7 +467,7 @@ function rCommissions(){
      const clients=F.filter(f=>(f.closed_by===s.user_id||f.assigned_to===s.user_id)&&['vendor_on_file','client'].includes(f.call_status)).length;
      const rows=reps[s.user_id]||[];
      return '<tr><td>'+esc(s.full_name||s.email)+(s.is_primary?' ★':'')+'</td><td>'+leads+'</td><td>'+convos+'</td><td>'+clients+
-      '</td><td>$'+sum(rows.filter(c=>c.month===mo)).toFixed(2)+'</td><td>$'+sum(rows).toFixed(2)+'</td></tr>'}).join('')+'</table>';
+      '</td><td>$'+sum(rows.filter(c=>c.month===mo)).toFixed(2)+'</td><td>$'+(sum(rows)+mileBonusFor(s.user_id)).toFixed(2)+'</td></tr>'}).join('')+'</table>';
 }
 function rTeam(){
   if(!isOwner())return '';
@@ -579,7 +584,7 @@ async function saveFac(id){
   }
   if(isOwner()&&['vendor_on_file','client'].includes(newStatus)&&!upd.closed_by&&f.assigned_to)upd.closed_by=f.assigned_to;
   const extUpd=Object.assign({},upd);
-  if($('f_og')&&$('f_og').value.trim())extUpd.operator_group=$('f_og').value.trim();
+  if($('f_og'))extUpd.operator_group=$('f_og').value.trim()||null;
   let {error}=await sb.from('facilities').update(extUpd).eq('id',id);
   if(error){
     const retry=await sb.from('facilities').update(upd).eq('id',id);
@@ -660,26 +665,7 @@ function openJob(id){
    (owner&&!['approved','cancelled'].includes(d.status)?'<button class="b warn" onclick="advJob(\''+id+'\',\'cancelled\')">Cancel</button>':'')+
    '</div>');
 }
-async function ensureCommissionCredit(d,feeCollected){
-  if(!isOwner()||!feeCollected)return;
-  const f=fac(d.facility_id);
-  const repId=f.closed_by||f.assigned_to;
-  if(!repId)return;
-  const repStaff=STAFF.find(s=>s.user_id===repId);
-  if(repStaff&&repStaff.is_primary)return;
-  const existing=COMM.find(c=>c.dispatch_id===d.id);
-  if(existing)return;
-  const hasPriorBounty=COMM.some(c=>c.facility_id===d.facility_id&&(+c.bounty_usd||0)>0);
-  const bounty=hasPriorBounty?0:parseFloat(SET.commission_bounty_usd||'40');
-  const pct=parseFloat(SET.commission_percent||'20');
-  const trail=+(((+d.coordination_fee_usd||FEE)*(pct/100)).toFixed(2));
-  const month=(d.completed_at||new Date().toISOString()).slice(0,7);
-  try{
-    await sb.from('rep_commissions').insert({dispatch_id:d.id,facility_id:d.facility_id,rep_id:repId,month,bounty_usd:bounty,trail_usd:trail});
-  }catch(e){}
-}
 async function saveJob(id){
-  const d=D.find(x=>x.id===id);
   const upd={notes:$('jd_no').value||null};
   if($('jd_t'))upd.tech_id=$('jd_t').value||null;
   if($('jd_ph'))upd.photo_evidence_url=$('jd_ph').value||null;
@@ -688,18 +674,15 @@ async function saveJob(id){
   if($('jd_fc'))upd.fee_collected=$('jd_fc').checked;
   const {error}=await sb.from('dispatches').update(upd).eq('id',id);
   if(error){toast(error.message);return}
-  if(d&&upd.fee_collected)await ensureCommissionCredit(d,true);
   toast('Saved ✓');closeDrawer();refresh();
 }
 async function advJob(id,st){
-  const d=D.find(x=>x.id===id);
   const upd={status:st};
   if(st==='dispatched')upd.dispatched_at=new Date().toISOString();
   if(st==='completed')upd.completed_at=new Date().toISOString();
   if($('jd_fc')&&$('jd_fc').checked)upd.fee_collected=true;
   const {error}=await sb.from('dispatches').update(upd).eq('id',id);
   if(error){toast(error.message);return}
-  if(d&&(upd.fee_collected||d.fee_collected)&&st==='approved')await ensureCommissionCredit(d,true);
   toast(st.replace('_',' ')+' ✓');closeDrawer();refresh();
 }
 function openTech(id){

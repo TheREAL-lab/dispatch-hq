@@ -180,7 +180,7 @@ const SB_URL='https://teptzyvzuenolwtfosht.supabase.co', SB_KEY='sb_publishable_
 const sb=window.supabase.createClient(SB_URL,SB_KEY);
 const $=id=>document.getElementById(id);
 
-let mediaRec=null, chunks=[], recordedDataUrl=null, recTimer=null, recSec=0;
+let mediaRec=null, chunks=[], recordedBlob=null, uploadedPath=null, recTimer=null, recSec=0;
 
 function recalc(){
   const s=+$('rngSingle').value, m=+$('rngMulti').value;
@@ -212,15 +212,11 @@ async function toggleRecord(){
       btn.classList.remove('active');
       btn.textContent='🎙️ Re-Record 30-Sec Pitch';
       const blob=new Blob(chunks,{type:mediaRec.mimeType||'audio/webm'});
-      const reader=new FileReader();
-      reader.onloadend=()=>{
-        recordedDataUrl=reader.result;
-        const ap=$('audioPreview');
-        ap.src=recordedDataUrl;
-        ap.style.display='block';
-        st.textContent='Voice audition recorded ('+recSec+'s) ✓ Ready to submit.';
-      };
-      reader.readAsDataURL(blob);
+      recordedBlob=blob; uploadedPath=null;
+      const ap=$('audioPreview');
+      ap.src=URL.createObjectURL(blob);
+      ap.style.display='block';
+      st.textContent='Voice audition recorded ('+recSec+'s) ✓ Ready to submit.';
     };
     recSec=0;
     mediaRec.start();
@@ -255,12 +251,29 @@ async function submitAudition(){
   const name=$('c_name').value.trim(), phone=$('c_phone').value.trim(), email=$('c_email').value.trim();
   const city=$('c_city').value.trim(), hrs=+$('c_hrs').value, src=$('c_src').value;
   const exp=$('c_exp').value.trim();
-  const vurl=$('c_vurl').value.trim()||recordedDataUrl||null;
+  const pastedUrl=$('c_vurl').value.trim();
   if(!name||!phone||!email){$('subErr').textContent='Please enter your name, cell phone, and email address.';return}
   const caps=Array.from(document.querySelectorAll('.c_cap:checked')).map(x=>x.value);
-  const {score,bd}=scoreCandidate(caps,hrs,!!vurl,exp);
+  const {score,bd}=scoreCandidate(caps,hrs,!!(pastedUrl||recordedBlob),exp);
   const btn=$('btnSubmit');
   btn.disabled=true; btn.textContent='Submitting Audition…';
+  const fail=msg=>{
+    $('subErr').textContent='We could not submit your audition ('+msg+'). Please try again in a minute.';
+    btn.disabled=false; btn.innerHTML='Submit Audition &amp; Request Rep Seat →';
+  };
+
+  // In-browser recordings go to the private rep-auditions bucket; the row stores only the object path.
+  let vurl=pastedUrl||null;
+  if(!vurl&&recordedBlob&&uploadedPath)vurl=uploadedPath;
+  if(!vurl&&recordedBlob){
+    const type=(recordedBlob.type||'audio/webm').split(';')[0];
+    const ext={'audio/webm':'webm','audio/ogg':'ogg','audio/mp4':'m4a','audio/mpeg':'mp3','audio/wav':'wav'}[type]||'webm';
+    const id=(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2));
+    const path='auditions/'+id+'.'+ext;
+    const up=await sb.storage.from('rep-auditions').upload(path,recordedBlob,{contentType:type,upsert:false});
+    if(up.error){fail(up.error.message);return}
+    vurl=uploadedPath=path;
+  }
 
   const row={
     name, email, phone, city:city||'DFW / Remote', source:src,
@@ -270,12 +283,8 @@ async function submitAudition(){
   };
 
   const {error}=await sb.from('rep_candidates').insert(row);
-  if(error){
-    // A browser-local copy would never reach the owner's Radar, so surface the failure and let the applicant retry.
-    $('subErr').textContent='We could not submit your audition ('+error.message+'). Please try again in a minute.';
-    btn.disabled=false; btn.innerHTML='Submit Audition &amp; Request Rep Seat →';
-    return;
-  }
+  // A browser-local copy would never reach the owner's Radar, so surface the failure and let the applicant retry.
+  if(error){fail(error.message);return}
   btn.style.display='none';
   $('okBox').style.display='block';
 }

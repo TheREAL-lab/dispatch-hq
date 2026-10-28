@@ -14,12 +14,12 @@ The #1 killer of commission-only outbound teams is asking reps to cold-call a hi
 2. **Two-Tier Dispatch Coordination Fees (How Texas Gate Dispatch Gets Paid):**
    - **Standard Next-Day Dispatch:** `\$89.00` flat coordination fee.
    - **Same-Day Emergency / After-Hours Lock-Out:** `\$149.00` flat coordination fee.
-   - **Collection Flow:** When a facility calls or texts in a broken gate, the Owner assigns a licensed tech (`DPS-lic`), clicks **Invoice (`DOC 03`)** directly from the job row (auto-prefilled with facility, equipment, work-order ID, and fee), and marks the dispatch `paid` (`fee_paid = true`) once settled via Card/Zelle/ACH.
+   - **Collection Flow:** When a facility calls or texts in a broken gate, the Owner assigns a licensed tech (`DPS-lic`), clicks **Invoice (`DOC 03`)** directly from the job row (auto-prefilled with facility, equipment, work-order ID, and fee), and marks the dispatch `paid` (`fee_collected = true`, status `approved`) once settled via Card/Zelle/ACH.
 3. **Three-Stack 1099 Rep Compensation (`DOC 05`):**
    - **Fast-Start VOF Milestone (`\$50` Bonus):** Paid when a new rep completes their first **10 verified Vendor-on-File (`vendor_on_file = true`) enrollments** (requires manager name, direct phone/email, and `DOC 02` sent). Caps customer acquisition cost at **\$5/enrolled facility** while giving new reps a guaranteed Week-1 win.
    - **First-Dispatch Bounty (`\$40.00` Flat):** Paid the first time any facility closed by that rep completes a paid dispatch (`\$89` or `\$149`).
    - **12-Month Trailing Residual (`20%`):** Paid on every subsequent paid dispatch from that facility for 12 full months (`\$17.80` on Standard `\$89`; `\$29.80` on Emergency `\$149`).
-   - **Multi-Property Operator Multiplier:** Regional storage supervisors frequently oversee **5 to 15 DFW locations**. When a rep signs a regional manager, every facility roof under that `operator_group` is locked to `closed_by = <rep_email>`, earning the `\$40` first-dispatch bounty + `20%` 12-month residual across **every single property**.
+   - **Multi-Property Operator Multiplier:** Regional storage supervisors frequently oversee **5 to 15 DFW locations**. When a rep signs a regional manager, every facility roof under that `operator_group` is credited to the closing rep (`closed_by` = the rep's user id), earning the `\$40` first-dispatch bounty + `20%` 12-month residual across **every single property**.
 
 | Metric | Standard Dispatch (`\$89`) | Emergency Same-Day (`\$149`) |
 | :--- | :---: | :---: |
@@ -79,5 +79,5 @@ python3 agents/recruiting_swarm.py sweep-leads --push
    - This automatically marks the candidate `promoted` and opens a pre-filled message containing [`docs.html?doc=d5`](../docs.html) (Independent Sales Rep Agreement) and the [`index.html`](../index.html) Console link.
 3. **Activate in Command HQ (`index.html` → `Team` tab):**
    - Add the rep's email under **Staff Roster** with role `employee` (displayed as `1099 Sales Rep`).
-   - Click **`+ Deal 25 Leads`** next to their name to assign 25 uncalled, top-scored DFW storage facilities exclusively to their queue (`assigned_to = <rep_email>`).
+   - Click **`+ Deal 25 Leads`** next to their name to assign 25 uncalled, top-scored DFW storage facilities exclusively to their queue (`assigned_to` = the rep's user id).
    - If a rep goes inactive for 72+ hours, click **`Reclaim Uncalled`** to return their untouched leads back to the open pool.

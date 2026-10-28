@@ -286,13 +286,11 @@ async function verifyOwnerAndLoad(){
   load();
 }
 
+const SB_URL='https://teptzyvzuenolwtfosht.supabase.co', SB_KEY='sb_publishable_4LgHf6k24QMus_1nvHPgSg__3rjqh52';
+
 async function boot(){
   try{
-    const src=await fetch('index.html').then(r=>r.text());
-    const url=(src.match(/https:\/\/[a-z0-9]+\.supabase\.co/)||[])[0];
-    const key=(src.match(/sb_publishable_[A-Za-z0-9_\-]+/)||src.match(/eyJ[A-Za-z0-9_\-\.]{60,}/)||[])[0];
-    if(!url||!key){$('booterr').textContent='Could not read connection config from index.html.';return;}
-    sb=window.supabase.createClient(url,key);
+    sb=window.supabase.createClient(SB_URL,SB_KEY);
     const {data:{session}}=await sb.auth.getSession();
     if(session){await verifyOwnerAndLoad();}
     else{$('login').style.display='block';}
@@ -407,7 +405,9 @@ function renderReps(){
     let audioHtml='';
     if(r.voice_sample_url){
       audioHtml='<div class="audio-box"><div class="lbl">🎙 60-Second Storage Manager Voice Audition</div>'+
-        '<audio controls preload="none" src="'+esc(r.voice_sample_url)+'"></audio></div>';
+        (/^(https?:|data:)/i.test(r.voice_sample_url)
+          ?'<audio controls preload="none" src="'+esc(r.voice_sample_url)+'"></audio></div>'
+          :'<audio controls preload="none" data-audition="'+esc(r.voice_sample_url)+'"></audio></div>');
     }else{
       audioHtml='<div class="audio-box" style="border-style:dashed"><div class="lbl" style="color:var(--dim)">No voice sample recorded yet — send audition link below</div></div>';
     }
@@ -424,6 +424,16 @@ function renderReps(){
         (r.status!=='dismissed'?'<button class="b" onclick="dismissRep(\''+esc(r.id)+'\')">Dismiss</button>':'')+
       '</div></div>';
   }).join('');
+  signAuditionAudio();
+}
+
+// In-browser recordings are private objects in the rep-auditions bucket; give the owner short-lived links.
+async function signAuditionAudio(){
+  const els=[...document.querySelectorAll('audio[data-audition]')];
+  if(!els.length)return;
+  const {data,error}=await sb.storage.from('rep-auditions').createSignedUrls(els.map(el=>el.dataset.audition),3600);
+  if(error)return;
+  (data||[]).forEach((d,i)=>{if(d.signedUrl)els[i].src=d.signedUrl;});
 }
 
 async function approveRep(id,channel){

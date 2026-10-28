@@ -5,17 +5,21 @@ See also the workspace master guide at [`../CLAUDE.md`](../CLAUDE.md).
 ## 1. Supabase Architecture (`REAL WORK PROJECT` — `teptzyvzuenolwtfosht`)
 - **Schema:** `public` ONLY. (Never touch `flowsync` schema).
 - **Core Tables:**
-  - `facilities` — DFW self-storage facilities (`status`, `vendor_on_file`, `assigned_to`, `closed_by`, `closed_at`, `enrolled_at`, `operator_group`, `fit_notes`, `score`, `pain_recent`).
-  - `outreach_log` — Call outcomes logged by Owner or 1099 reps (`called_by`).
-  - `dispatches` — Work orders (`fee_charged` default `$89` Standard / `$149` Emergency, `fee_paid`).
-  - `techs` — Licensed gate technicians (`dps_license`, `insured`, `active`).
-  - `dispatch_staff` — Role mapping (`email`, `role` in `'owner' | 'employee'`, `name`, `active`).
-  - `rep_commissions` — Automated commission ledger (`$40` `first_fee` bounty + `20%` `residual_20pct` for 12 months).
-  - `lead_candidates`, `tech_candidates`, `rep_candidates` — Radar sourcing queues.
+  - `facilities` — DFW self-storage facilities (`call_status` in `not_called | no_answer | spoke | vendor_on_file | declined | client`, `vendor_on_file`, `assigned_to`, `closed_by`, `closed_at`, `enrolled_at`, `operator_group`, `contact_name`, `current_vendor`, `fit_notes`, `priority`). `assigned_to` / `closed_by` are `auth.users` ids.
+  - `outreach_log` — Call outcomes logged by the Owner or 1099 reps.
+  - `dispatches` — Work orders (`coordination_fee_usd` default `$89`; `$149` Emergency via `app_settings.emergency_fee_usd`; `fee_collected`; `status` in `requested | dispatched | on_site | completed | approved | cancelled`).
+  - `techs` — Licensed gate technicians (`dps_license_number`, `tops_verified_on`, `coi_expires_on`, `is_active`).
+  - `dispatch_staff` — Role mapping (`user_id`, `email`, `full_name`, `role` in `'owner' | 'employee' | 'pending'`, `jobs_scope`, `is_primary`).
+  - `app_settings` — Key/value pricing & commission plan (`booking_fee_usd`, `emergency_fee_usd`, `commission_bounty_usd`, `commission_percent`, `commission_window_months`, `vof_milestone_count`, `vof_milestone_bonus_usd`).
+  - `rep_candidates` — 1099 rep recruiting queue (`hours_per_week`, `capabilities`, `voice_sample_url`, `status` in `new | invited | auditioned | promoted | dismissed`).
+  - `lead_candidates`, `tech_candidates` — Radar sourcing queues.
+- **Views (read-only, never insert into them):**
+  - `rep_commissions` — `$40` first-dispatch bounty + `20%` trail for 12 months, derived from `approved` + `fee_collected` dispatches on facilities with `closed_by` set.
+  - `rep_vof_milestones` — Fast-Start bonus: every `vof_milestone_count` verified VOF enrollments (contact + current vendor logged) earns `vof_milestone_bonus_usd`.
+- **Storage:** private bucket `rep-auditions` — applicants upload to `auditions/…`; only the owner can read (Radar uses signed URLs).
 
-## 2. Applying the 1099 Sales Force SQL Migration
-Run [`supabase/migrations/20261020_rep_sales_force_and_recruiting.sql`](./supabase/migrations/20261020_rep_sales_force_and_recruiting.sql) in the Supabase SQL Editor (or via Supabase CLI/MCP) to ensure:
-1. `facilities` has `assigned_to`, `closed_by`, `closed_at`, `enrolled_at`, `operator_group`, `fit_notes`, `vendor_on_file`.
-2. Triggers `trg_facility_rep_attribution` and `trg_dispatch_commission_credit` automatically attribute deals and generate `$40` / `20%` rows in `rep_commissions` when a dispatch is marked `paid`.
-3. `rep_candidates` table and RLS policies are active for `audition.html` and `radar.html`.
-*(Note: `index.html`, `radar.html`, and `audition.html` also include client-side fallbacks so the UI works seamlessly even before the migration is run).*
+## 2. Sales Force Migration
+[`supabase/migrations/20261020_rep_sales_force_and_recruiting.sql`](./supabase/migrations/20261020_rep_sales_force_and_recruiting.sql) is **applied** to the live project (as `rep_sales_force_and_recruiting` + `rep_vof_milestones_security_invoker`). It provides:
+1. `facilities.enrolled_at` / `operator_group` and the `trg_facility_rep_attribution` trigger: reps auto-claim unassigned leads they work, closer attribution locks on `vendor_on_file`/`client`, and reps cannot reassign or re-attribute other reps' facilities.
+2. Multi-Property Operator Multiplier (`trg_facility_operator_group_lock_*`): closing one location credits every unattributed location in the same `operator_group` to that rep.
+3. `rep_vof_milestones` view, `rep_candidates` table + RLS, and the `rep-auditions` bucket + policies.
