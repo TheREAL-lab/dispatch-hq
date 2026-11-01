@@ -13,7 +13,9 @@ See also the workspace master guide at [`../CLAUDE.md`](../CLAUDE.md).
   - `rep_payouts` — Owner-recorded commission/VOF payouts (`total_usd` generated). Reps read their own.
   - `app_settings` — Key/value pricing & commission plan (`booking_fee_usd`, `emergency_fee_usd`, `commission_bounty_usd`, `commission_percent`, `commission_window_months`, `vof_milestone_count`, `vof_milestone_bonus_usd`).
   - `rep_candidates` — 1099 rep recruiting queue (`hours_per_week`, `capabilities`, `voice_sample_url`, `status` in `new | invited | auditioned | promoted | dismissed`).
-  - `lead_candidates`, `tech_candidates` — Radar sourcing queues.
+  - `lead_candidates`, `tech_candidates` — Radar sourcing queues. `lead_candidates` is filled by the `lead-sweep` Edge Function (unique `place_id`); `lead_promote()` turns one into a facility.
+  - `lead_sweeps` — One row per sweep run (api_calls, found, inserted, skips, error). Owner-only.
+  - `lead_chain_blocklist` — Name patterns of chains the sweep skips.
 - **Views (read-only, never insert into them):**
   - `rep_commissions` — `$40` first-dispatch bounty + `20%` trail for 12 months, derived from `approved` + `fee_collected` dispatches on facilities with `closed_by` set.
   - `rep_payout_balance` — Per-rep earned (commission + VOF bonus) vs. paid vs. balance. `security_invoker`.
@@ -33,3 +35,8 @@ See also the workspace master guide at [`../CLAUDE.md`](../CLAUDE.md).
 3. `rep_commissions` is `security_invoker`; `rep_payouts` + `rep_payout_balance`; `dhq_dispatch_ready()` RPC; `dhq_*` helpers not executable by `anon`.
 4. Commission math (unchanged, matches DOC 05 §3): first paid dispatch = `$40` bounty **plus** `20%` trail; later dispatches in the window = `20%`.
 
+## 4. Lead Sweep (Edge Function `lead-sweep`)
+- Source: [`supabase/functions/lead-sweep/`](./supabase/functions/lead-sweep/) — `index.ts` (handler: owner check via `dhq_is_owner`, runs as the caller so RLS applies) and `sweep.ts` (pure search/filter/score logic). Tests: `node --test supabase/functions/lead-sweep/sweep.test.ts`. Deploy with `verify_jwt: true`, both files.
+- Key: Google Places API (New). The function uses the `GOOGLE_MAPS_API_KEY` Edge Function secret if set, otherwise the Vault secret `google_maps_api_key` via the owner-only RPC `dhq_google_maps_key()` ([`20261102_google_maps_key_from_vault.sql`](./supabase/migrations/20261102_google_maps_key_from_vault.sql), applied). **Currently stored in Vault.** Rotate with `vault.update_secret`. Never commit the key or put it in the pages.
+- Called from Radar → Facility Leads (`runSweep()`); body `{ cities?, dry_run?, max_calls? }` (cities must be from `DEFAULT_CITIES`; `max_calls` default 150, max 300).
+- Migration [`20261102_lead_sweeps.sql`](./supabase/migrations/20261102_lead_sweeps.sql) is **applied** (as `lead_sweeps`).
