@@ -61,11 +61,14 @@ python3 agents/recruiting_swarm.py sweep-leads   # prints the instructions
 1. **CommissionCrowd & RepHunter (Highest Multi-Site Quality):**
    - Target independent B2B reps who already call on commercial property managers, roofing, paving, or security accounts in Texas.
 2. **Craigslist DFW (`dallas.craigslist.org` → `sales / biz dev` & `gigs → talent`):**
-   - Post Tuesday & Thursday mornings at 8:30 AM CT using the `craigslist_dfw` template from `recruiting_swarm.py generate-ads` (or copy directly from **Radar → Sales Reps → Recruiting Ads & Swarm Kit**).
+   - Post Tuesday & Thursday mornings at 8:30 AM CT using the `craigslist_dfw` template from `recruiting_swarm.py generate-ads` (or copy directly from **Radar → Sales Reps → Recruiting Ad Kit**).
 3. **Reddit (`r/forhire`, `r/sales`, `r/DFWJobs`, `r/telemarketing`):**
    - Post the `[Hiring]` brief and DM active B2B cold callers with the `audition.html` link.
 4. **Upwork / Indeed ("Milestone Opener" Structure):**
    - Frame Milestone 1 as the **\$50 Fast-Start (10 Verified Vendor-on-File Enrollments)** so the listing complies with milestone/deliverable rules while staying 100% performance-based.
+
+
+**Nothing posts these ads or finds applicants automatically.** Applicants reach Radar only when someone submits `audition.html`. Always use the tracked link for each channel (`audition.html?src=craigslist_dfw | commission_crowd | reddit_sales | upwork | indeed_zip | direct_invite`). The Radar Ad Kit copy buttons and `generate-ads` add it for you, and Radar shows "By ad" counts so you can see which channel is working. New applicants since your last visit get a **NEW** chip and a count on the Sales Reps tab (Radar refreshes every 60s).
 
 ---
 

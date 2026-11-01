@@ -134,15 +134,15 @@
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="b sm" onclick="copyAuditionLink()">Copy Audition Link</button>
         <button class="b sm" onclick="openModal('addRepModal')">+ Add Candidate</button>
-        <button class="b sm go" onclick="openModal('swarmModal')">Recruiting Ads & Swarm Kit</button>
+        <button class="b sm go" onclick="openModal('swarmModal')">Recruiting Ad Kit</button>
       </div>
     </div>
 
     <div class="counts" id="counts"></div>
     <div id="list"></div>
     <div class="note" id="sweepnote">
-      New facility &amp; tech candidates are found by automated sweep (`python3 agents/recruiting_swarm.py`).
-      1099 Sales Rep candidates flow in automatically from <strong>audition.html</strong> or via the Recruiting Swarm CLI.
+      Facility leads come from <strong>Run Sweep</strong> (Google Maps). 1099 rep applicants arrive here only when someone
+      submits <strong>audition.html</strong> — post the ads from the <strong>Recruiting Ad Kit</strong> to get them coming in.
     </div>
   </div>
   <div class="err" id="booterr" style="padding:20px 4px"></div>
@@ -173,12 +173,12 @@
       <div>
         <label>Source Channel</label>
         <select id="rc-source">
-          <option value="commissioncrowd">CommissionCrowd</option>
+          <option value="commission_crowd">CommissionCrowd / RepHunter</option>
           <option value="craigslist_dfw">Craigslist DFW</option>
-          <option value="reddit">Reddit (r/sales / r/forhire)</option>
+          <option value="reddit_sales">Reddit (r/sales / r/forhire)</option>
           <option value="upwork">Upwork / Freelance</option>
-          <option value="rephunter">RepHunter</option>
-          <option value="referral">Direct Referral</option>
+          <option value="indeed_zip">Indeed / ZipRecruiter</option>
+          <option value="direct_invite">Direct Invite / Referral</option>
         </select>
       </div>
       <div>
@@ -198,10 +198,11 @@
 <!-- Modal: Recruiting Swarm Ads & SQL Setup -->
 <div class="modal-bg" id="swarmModal" onclick="if(event.target===this)closeModal('swarmModal')">
   <div class="modal">
-    <h3>1099 Recruiting Swarm &amp; Job Ad Kit</h3>
+    <h3>1099 Recruiting Job Ad Kit</h3>
     <p style="color:var(--dim);font-size:12.5px;margin-bottom:10px">
       Never ask candidates for resumes or schedule interviews before hearing them on the phone.
-      Every ad funnels directly to your self-serve 60-second voice audition page (`audition.html`).
+      Post these yourself — nothing posts them automatically. Each copy button adds a tracked audition link
+      (<code>audition.html?src=…</code>), so every applicant shows up here tagged with the ad they came from.
     </p>
 
     <label>1. Craigslist DFW (`sales / biz dev` + `gigs → talent`)</label>
@@ -219,7 +220,7 @@ COMPENSATION (1099 Independent Rep):
 • Multi-Property Multiplier: Enroll a regional manager with 8 DFW sites and you earn the $40 bounty + 20% residual on ALL 8 roofs.
 
 NO RESUMES. Complete our 60-second browser voice audition here:</div>
-    <button class="b sm" onclick="copyAd('ad-cl')">Copy Craigslist Ad + Audition Link</button>
+    <button class="b sm" onclick="copyAd('ad-cl','craigslist_dfw')">Copy Craigslist Ad + Audition Link</button>
 
     <label style="margin-top:14px">2. Reddit (`r/forhire`, `r/sales`, `r/DFWJobs`) / Direct DM</label>
     <div class="ad-box" id="ad-rd">[Hiring] (Remote / Texas) B2B Cold Callers for DFW Commercial Gate Dispatch — Zero-Cost Offer to Prospect ($50 VOF Fast-Start + $40/Site Bounty + 20% 12-Mo Residuals)
@@ -230,7 +231,7 @@ Your job: Call storage facility managers during weekday hours (9am–4pm CT) and
 • 20 hrs/wk realistic earnings: $2,100–$3,800/mo by Month 3 as your residual book compounds.
 • Browser dialer, live objection playbook, and 1-click SMS terms built in.
 • Skip the resume — read a 30-second script on our voice audition portal:</div>
-    <button class="b sm" onclick="copyAd('ad-rd')">Copy Reddit Post + Audition Link</button>
+    <button class="b sm" onclick="copyAd('ad-rd','reddit_sales')">Copy Reddit Post + Audition Link</button>
 
     <label style="margin-top:14px">3. CommissionCrowd / RepHunter (Independent Facilities &amp; Commercial Reps)</label>
     <div class="ad-box" id="ad-cc">Opportunity: Commercial Gate & Access Control Dispatch — Multi-Property Storage Portfolio Residuals (Texas)
@@ -240,7 +241,7 @@ Zero upfront cost to the facility (we only charge $89 standard / $149 emergency 
 We credit you across the operator's ENTIRE portfolio: land one regional manager with 10 locations and earn $40 per roof ($400) + 20% trailing commission on all 10 properties for 12 months.
 
 Audition & interactive commission calculator:</div>
-    <button class="b sm" onclick="copyAd('ad-cc')">Copy CommissionCrowd Pitch + Link</button>
+    <button class="b sm" onclick="copyAd('ad-cc','commission_crowd')">Copy CommissionCrowd Pitch + Link</button>
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--line)">
       <span style="font-size:12px;color:var(--dim)">CLI Swarm: <code>python3 agents/recruiting_swarm.py --help</code></span>
@@ -252,7 +253,7 @@ Audition & interactive commission calculator:</div>
 <div class="toast" id="toast"></div>
 
 <script>
-let sb=null, tab='leads', rows=[], repFilter='active', dbMissingRepTable=false;
+let sb=null, tab='leads', rows=[], repFilter='active';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -260,8 +261,11 @@ function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');set
 function openModal(id){$(id).classList.add('open');}
 function closeModal(id){$(id).classList.remove('open');}
 
-function getAuditionUrl(){
-  return new URL('audition.html', window.location.href).href;
+// src = the ad channel (must match an option value in audition.html's "How did you hear" list).
+function getAuditionUrl(src){
+  const u=new URL('audition.html', window.location.href);
+  if(src)u.searchParams.set('src',src);
+  return u.href;
 }
 function getHqUrl(){
   return new URL('index.html', window.location.href).href;
@@ -276,8 +280,8 @@ function copyAuditionLink(){
   toast('Copied Audition Portal URL ✓');
 }
 
-function copyAd(boxId){
-  const txt=$(boxId).textContent.trim()+'\n'+getAuditionUrl();
+function copyAd(boxId,src){
+  const txt=$(boxId).textContent.trim()+'\n'+getAuditionUrl(src);
   navigator.clipboard.writeText(txt);
   toast('Copied Ad + Audition Link ✓');
 }
@@ -317,6 +321,7 @@ async function doLogin(){
 }
 
 function setTab(t){
+  if(t==='reps'&&tab!=='reps'){repNewSince=repSeenAt();markRepsSeen();repRowsSig='';}
   tab=t;
   $('tab-leads').classList.toggle('on',t==='leads');
   $('tab-techs').classList.toggle('on',t==='techs');
@@ -335,26 +340,39 @@ function setRepFilter(f){
   load();
 }
 
-// Maps pre-migration field/status names (still present in older browser-local rows) onto the rep_candidates schema.
-const LEGACY_REP_STATUS={audition_submitted:'auditioned',approved:'promoted',onboarded:'promoted',rejected:'dismissed'};
-function normalizeRep(r){
-  const o=Object.assign({},r);
-  if(o.hours_per_week==null&&o.availability_hrs!=null)o.hours_per_week=o.availability_hrs;
-  if(!o.capabilities&&o.experience_tags)o.capabilities=o.experience_tags;
-  delete o.availability_hrs;delete o.experience_tags;
-  o.status=LEGACY_REP_STATUS[o.status]||o.status||'new';
-  return o;
-}
 const ACTIVE_REP_STATUSES=['new','invited','auditioned'];
-function getLocalRepAuditions(){
-  try{return JSON.parse(localStorage.getItem('dhq_local_rep_auditions')||'[]').map(normalizeRep);}catch(_e){return [];}
+const SOURCE_LABELS={craigslist_dfw:'Craigslist',commission_crowd:'CommissionCrowd',reddit_sales:'Reddit',upwork:'Upwork',indeed_zip:'Indeed',direct_invite:'Direct invite',audition_portal:'Untracked'};
+// "New" = applied since the owner last opened the Sales Reps tab (per-browser convenience only).
+const REP_SEEN_KEY='dhq_reps_seen_at';
+let repNewSince=null, repPollTimer=null, repRowsSig='';
+function repSeenAt(){try{return localStorage.getItem(REP_SEEN_KEY)||'1970-01-01T00:00:00Z';}catch(_e){return '1970-01-01T00:00:00Z';}}
+function markRepsSeen(){try{localStorage.setItem(REP_SEEN_KEY,new Date().toISOString());}catch(_e){}}
+function isNewRep(r){return !!(repNewSince&&r.created_at&&r.created_at>repNewSince);}
+function timeAgo(iso){
+  const m=Math.round((Date.now()-new Date(iso).getTime())/60000);
+  if(!isFinite(m))return '';
+  if(m<1)return 'just now'; if(m<60)return m+'m ago';
+  const h=Math.round(m/60); if(h<48)return h+'h ago';
+  return Math.round(h/24)+'d ago';
 }
-function saveLocalRepAuditions(arr){
-  try{localStorage.setItem('dhq_local_rep_auditions',JSON.stringify(arr));}catch(_e){}
+async function refreshRepBadge(){
+  const {count,error}=await sb.from('rep_candidates').select('id',{count:'exact',head:true})
+    .gt('created_at',repSeenAt()).in('status',ACTIVE_REP_STATUSES);
+  const t=$('tab-reps');
+  t.textContent='Sales Reps (1099)'+(!error&&count&&tab!=='reps'?' · '+count+' new':'');
+}
+function startRepPolling(){
+  if(repPollTimer)return;
+  repPollTimer=setInterval(async()=>{
+    if(document.hidden)return;
+    if(tab==='reps')await loadRepCandidates(true); else await refreshRepBadge();
+  },60000);
 }
 
 async function load(){
   $('list').innerHTML='<div class="empty">Loading…</div>';
+  startRepPolling();
+  refreshRepBadge();
   if(tab==='reps'){
     await loadRepCandidates();
     return;
@@ -416,49 +434,51 @@ async function runSweep(oneCity,dry){
   }finally{btns.forEach(b=>b.disabled=false);}
 }
 
-async function loadRepCandidates(){
-  dbMissingRepTable=false;
-  let dbRows=[];
-  const {data,error}=await sb.from('rep_candidates').select('*').order('score',{ascending:false});
+async function loadRepCandidates(quiet){
+  const {data,error}=await sb.from('rep_candidates').select('*').order('created_at',{ascending:false});
   if(error){
-    dbMissingRepTable=true;
-  }else{
-    dbRows=data||[];
+    if(!quiet)$('list').innerHTML='<div class="empty">Could not load rep applicants: '+esc(error.message)+'</div>';
+    return;
   }
-  const localRows=getLocalRepAuditions();
-  const seen=new Set(dbRows.map(r=>r.id||r.email));
-  const merged=[...dbRows];
-  localRows.forEach(lr=>{
-    if(!seen.has(lr.id)&&!seen.has(lr.email))merged.push(lr);
-  });
+  const all=data||[];
+  const activeCount=all.filter(r=>ACTIVE_REP_STATUSES.includes(r.status)).length;
+  const approvedCount=all.filter(r=>r.status==='promoted').length;
+  const newCount=all.filter(r=>isNewRep(r)&&ACTIVE_REP_STATUSES.includes(r.status)).length;
+  const bySource={};
+  all.forEach(r=>{const k=SOURCE_LABELS[r.source]||r.source||'Untracked';bySource[k]=(bySource[k]||0)+1;});
+  const srcTxt=Object.entries(bySource).sort((a,b)=>b[1]-a[1]).map(([k,n])=>esc(k)+' '+n).join(' · ');
 
-  const activeCount=merged.filter(r=>ACTIVE_REP_STATUSES.includes(r.status)).length;
-  const approvedCount=merged.filter(r=>r.status==='promoted').length;
-
-  rows=merged.filter(r=>{
+  const next=all.filter(r=>{
     if(repFilter==='active')return ACTIVE_REP_STATUSES.includes(r.status);
     if(repFilter==='approved')return r.status==='promoted';
     return true;
-  }).sort((a,b)=>(b.score||0)-(a.score||0));
+  }).sort((a,b)=>(isNewRep(b)-isNewRep(a))||((b.score||0)-(a.score||0)));
 
-  $('counts').innerHTML='<span>'+activeCount+' active auditions · '+approvedCount+' approved/onboarded</span>'+
-    (dbMissingRepTable?'<span style="color:var(--hazard)">⚠ Run supabase/migrations/20261020_rep_sales_force_and_recruiting.sql in Supabase SQL Editor to persist rep_candidates in cloud DB</span>':'');
+  $('counts').innerHTML='<span>'+(newCount?'<strong style="color:var(--hazard)">'+newCount+' new</strong> · ':'')+
+    activeCount+' active auditions · '+approvedCount+' approved/onboarded</span>'+
+    (srcTxt?'<span>By ad: '+srcTxt+'</span>':'');
+  // Background refreshes only re-render when something changed, so a playing audition isn't cut off.
+  const sig=next.map(r=>r.id+':'+r.status).join(',');
+  if(quiet&&sig===repRowsSig)return;
+  repRowsSig=sig; rows=next;
   renderReps();
 }
 
 function renderReps(){
   if(!rows.length){
     $('list').innerHTML='<div class="empty">No 1099 rep candidates in this view yet.<br><br>'+
-      '<button class="b go" onclick="copyAuditionLink()">Copy Audition Link</button> '+
-      '<button class="b" onclick="seedSampleReps()">+ Load 3 Demo Auditions</button></div>';
+      'Applicants appear here when they submit the audition page. Post the ads in the <strong>Recruiting Ad Kit</strong> to get them coming in.<br><br>'+
+      '<button class="b go" onclick="openModal(\'swarmModal\')">Open Recruiting Ad Kit</button> '+
+      '<button class="b" onclick="copyAuditionLink()">Copy Audition Link</button></div>';
     return;
   }
   $('list').innerHTML=rows.map(r=>{
     const hot=(r.score||0)>=80?' hot':(r.status==='promoted'?' good':'');
     const tel=r.phone?('<a href="tel:'+esc(r.phone)+'">'+esc(r.phone)+'</a> · '):'';
     const mail=r.email?('<a href="mailto:'+esc(r.email)+'">'+esc(r.email)+'</a> · '):'';
-    let chips='<span class="chip '+(r.status==='promoted'?'good':'lic')+'">'+esc(r.status||'new')+'</span>';
-    if(r.source)chips+='<span class="chip">'+esc(r.source)+'</span>';
+    let chips=(isNewRep(r)?'<span class="chip pain">NEW</span>':'')+
+      '<span class="chip '+(r.status==='promoted'?'good':'lic')+'">'+esc(r.status||'new')+'</span>';
+    if(r.source)chips+='<span class="chip">'+esc(SOURCE_LABELS[r.source]||r.source)+'</span>';
     if(r.hours_per_week)chips+='<span class="chip">'+esc(r.hours_per_week)+' hrs/wk</span>';
     (r.capabilities||[]).forEach(t=>chips+='<span class="chip pain">'+esc(String(t).replace(/_/g,' '))+'</span>');
 
@@ -476,7 +496,7 @@ function renderReps(){
 
     return '<div class="card'+hot+'">'+
       '<div class="row1"><span class="cname">'+esc(r.name)+'</span><span class="score">'+(r.score||70)+'</span></div>'+
-      '<div class="meta">'+tel+mail+esc(r.city||'DFW, TX')+'</div>'+
+      '<div class="meta">'+tel+mail+esc(r.city||'DFW, TX')+(r.created_at?' · applied '+esc(timeAgo(r.created_at)):'')+'</div>'+
       '<div class="chips">'+chips+'</div>'+
       ev+audioHtml+
       '<div class="acts">'+
@@ -524,7 +544,7 @@ function sendAuditionInvite(id){
   if(!r)return;
   const firstName=(r.name||'').split(' ')[0]||'there';
   if(r.status==='new')setRepStatus(id,'invited').then(ok=>{if(ok)loadRepCandidates();});
-  const msg=`Hey ${firstName} — Taylor at Texas Gate Dispatch. To skip the resume/interview and get your first 25 DFW self-storage leads ($40/deal + 20% 12-mo residual), record the 30-second storage manager script here: ${getAuditionUrl()}`;
+  const msg=`Hey ${firstName} — Taylor at Texas Gate Dispatch. To skip the resume/interview and get your first 25 DFW self-storage leads ($40/deal + 20% 12-mo residual), record the 30-second storage manager script here: ${getAuditionUrl('direct_invite')}`;
   if(r.phone){
     window.open('sms:'+r.phone.replace(/[^0-9+]/g,'')+'?&body='+encodeURIComponent(msg),'_blank');
   }else{
@@ -534,10 +554,6 @@ function sendAuditionInvite(id){
 }
 
 async function setRepStatus(id,status){
-  const local=getLocalRepAuditions();
-  const idx=local.findIndex(x=>String(x.id)===String(id));
-  if(idx>=0){local[idx].status=status;saveLocalRepAuditions(local);return true;}
-  if(dbMissingRepTable)return true;
   const {error}=await sb.from('rep_candidates').update({status}).eq('id',id);
   if(error){toast('Could not update candidate: '+error.message);return false;}
   return true;
@@ -560,92 +576,19 @@ async function saveNewRepCandidate(){
   if(hrs>=20)score+=10;
   if(/storage|property|b2b|cold|commission/i.test(notes))score+=15;
 
-  const rec={
-    id:'rc_'+Date.now(),
+  const {error}=await sb.from('rep_candidates').insert([{
     name,phone,email,
     city:$('rc-city').value.trim()||'DFW, TX',
     source:$('rc-source').value,
     hours_per_week:hrs,
-    capabilities:['b2b_cold_calling','commission_ready'],
-    notes,
-    score:Math.min(98,score),
-    status:'new',
-    created_at:new Date().toISOString()
-  };
-
-  if(!dbMissingRepTable){
-    const {error}=await sb.from('rep_candidates').insert([{
-      name:rec.name,phone:rec.phone,email:rec.email,city:rec.city,
-      source:rec.source,hours_per_week:rec.hours_per_week,
-      capabilities:rec.capabilities,notes:rec.notes,score:rec.score,status:'new'
-    }]);
-    if(error){
-      const local=getLocalRepAuditions();local.unshift(rec);saveLocalRepAuditions(local);
-    }
-  }else{
-    const local=getLocalRepAuditions();local.unshift(rec);saveLocalRepAuditions(local);
-  }
+    capabilities:['b2b_cold_calling'],
+    notes,score:Math.min(98,score),status:'new'
+  }]);
+  // A browser-only copy would vanish on another device, so show the error instead.
+  if(error){toast('Could not save candidate: '+error.message);return;}
   closeModal('addRepModal');
   $('rc-name').value='';$('rc-phone').value='';$('rc-email').value='';$('rc-notes').value='';
   toast('Added '+name+' to 1099 Rep Radar ✓');
-  loadRepCandidates();
-}
-
-async function seedSampleReps(){
-  const samples=[
-    {
-      id:'rc_demo_1',
-      name:'Marcus Vance',
-      phone:'214-555-0148',
-      email:'marcus.vance.sales@example.com',
-      city:'Arlington, TX',
-      source:'commissioncrowd',
-      hours_per_week:25,
-      capabilities:['b2b_cold_calling','property_management','commission_only','texas_local'],
-      notes:'6 yrs B2B commercial roofing & parking lot striping cold calling across DFW. Already calls property & storage managers daily. Loves the $0-cost Vendor-on-File opener.',
-      score:94,
-      status:'auditioned'
-    },
-    {
-      id:'rc_demo_2',
-      name:'Elena Rostova',
-      phone:'972-555-0183',
-      email:'elena.outbound@example.com',
-      city:'Plano, TX',
-      source:'craigslist_dfw',
-      hours_per_week:30,
-      capabilities:['b2b_cold_calling','high_volume_dialer','commission_only'],
-      notes:'Former commercial HVAC dispatch setter (120+ dials/day). Looking for uncapped residual book where regional managers control 5–10 locations.',
-      score:89,
-      status:'auditioned'
-    },
-    {
-      id:'rc_demo_3',
-      name:'Devon Brooks',
-      phone:'817-555-0129',
-      email:'devon.b.dfw@example.com',
-      city:'Fort Worth, TX',
-      source:'reddit',
-      hours_per_week:15,
-      capabilities:['b2b_cold_calling','texas_local'],
-      notes:'Sourced via r/DFWJobs. Inside sales rep with weekday mornings free (9am-1pm CT) to dial Tarrant County storage yards.',
-      score:78,
-      status:'new'
-    }
-  ];
-  const local=getLocalRepAuditions();
-  samples.forEach(s=>{if(!local.some(x=>x.email===s.email))local.push(s);});
-  saveLocalRepAuditions(local);
-  if(!dbMissingRepTable){
-    for(const s of samples){
-      await sb.from('rep_candidates').insert([{
-        name:s.name,phone:s.phone,email:s.email,city:s.city,source:s.source,
-        hours_per_week:s.hours_per_week,capabilities:s.capabilities,
-        notes:s.notes,score:s.score,status:s.status
-      }]);
-    }
-  }
-  toast('Loaded 3 sample DFW 1099 rep candidates ✓');
   loadRepCandidates();
 }
 

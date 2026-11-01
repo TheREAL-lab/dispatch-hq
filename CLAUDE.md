@@ -12,7 +12,7 @@ See also the workspace master guide at [`../CLAUDE.md`](../CLAUDE.md).
   - `dispatch_staff` — Role mapping (`user_id`, `email`, `full_name`, `role` in `'owner' | 'employee' | 'pending'`, `jobs_scope` (default `assigned`), `is_primary`, onboarding: `agreement_signed_at`, `w9_received_at`, `payout_method`, `phone`, `last_active_at`).
   - `rep_payouts` — Owner-recorded commission/VOF payouts (`total_usd` generated). Reps read their own.
   - `app_settings` — Key/value pricing & commission plan (`booking_fee_usd`, `emergency_fee_usd`, `commission_bounty_usd`, `commission_percent`, `commission_window_months`, `vof_milestone_count`, `vof_milestone_bonus_usd`).
-  - `rep_candidates` — 1099 rep recruiting queue (`hours_per_week`, `capabilities`, `voice_sample_url`, `status` in `new | invited | auditioned | promoted | dismissed`).
+  - `rep_candidates` — 1099 rep recruiting queue (`hours_per_week`, `capabilities`, `voice_sample_url`, `status` in `new | invited | auditioned | promoted | dismissed`). Only filled by `audition.html` (anon insert) or Radar's + Add Candidate; nothing sources applicants automatically. `source` values are `audition.html`'s `c_src` options (`craigslist_dfw | commission_crowd | reddit_sales | upwork | indeed_zip | direct_invite`), set from `?src=`.
   - `lead_candidates`, `tech_candidates` — Radar sourcing queues. `lead_candidates` is filled by the `lead-sweep` Edge Function (unique `place_id`); `lead_promote()` turns one into a facility.
   - `lead_sweeps` — One row per sweep run (api_calls, found, inserted, skips, error). Owner-only.
   - `lead_chain_blocklist` — Name patterns of chains the sweep skips.

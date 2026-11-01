@@ -12,9 +12,9 @@ Internal operations dashboard, 1099 sales rep calling console, candidate/lead ra
   - Owner-only console (`dhq_role() === 'owner'`) with three pipelines:
     1. **Facility Leads (`lead_candidates`)** — **Run Sweep** searches Google Maps for DFW self-storage (via the `lead-sweep` Edge Function), skips chains and existing leads, and scores Google Review "Recent Gate Pain" evidence. Promote to Prospects or Dismiss.
     2. **Gate Techs (`tech_candidates`)** — Vetted commercial gate/access-control contractors with Texas DPS TOPS license verification links.
-    3. **Sales Reps (`rep_candidates`)** — 1099 outbound rep audition queue with inline 60-second voice playback, 1-click SMS/Email onboarding invites, and built-in Recruiting Ad Kit.
+    3. **Sales Reps (`rep_candidates`)** — 1099 outbound rep audition queue with inline 60-second voice playback, 1-click SMS/Email onboarding invites, NEW-since-last-visit badge, per-ad source counts, and a built-in Recruiting Ad Kit whose copy buttons add tracked `audition.html?src=<channel>` links.
 - **[`audition.html`](./audition.html)** — **Self-Serve 60-Second 1099 Voice Audition Portal**
-  - Public recruiting landing page with interactive commission calculator (`$50` Fast-Start + `$40` First-Dispatch Bounty + `20%` 12-Month Residuals + Multi-Property Operator Multiplier) and in-browser `MediaRecorder` voice audition that submits directly into `public.rep_candidates`.
+  - Public recruiting landing page with interactive commission calculator (`$50` Fast-Start + `$40` First-Dispatch Bounty + `20%` 12-Month Residuals + Multi-Property Operator Multiplier) and in-browser `MediaRecorder` voice audition that submits directly into `public.rep_candidates`. `?src=<channel>` preselects "How did you hear about us" so each applicant is tagged with the ad they came from.
 - **[`docs.html`](./docs.html)** — **Legal, Invoice & Onboarding Kit (`DOC 01` – `DOC 05`)**
   - `DOC 01`: Subcontractor Service Agreement (Gate Techs)
   - `DOC 02`: Facility Dispatch Terms (`$89` Standard / `$149` Emergency, `$0` upfront Vendor-on-File)

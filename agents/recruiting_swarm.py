@@ -23,6 +23,7 @@ import os
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -33,6 +34,23 @@ INDEX_HTML = ROOT_DIR / "index.html"
 DEFAULT_AUDITION_URL = "https://thereal-lab.github.io/dispatch-hq/audition.html"
 DEFAULT_HQ_URL = "https://thereal-lab.github.io/dispatch-hq/index.html"
 DEFAULT_DOCS_URL = "https://thereal-lab.github.io/dispatch-hq/docs.html?doc=d5"
+
+# Ad channel -> `rep_candidates.source` value. These must match the <option> values of
+# `c_src` in audition.html, which preselects the channel from the link's ?src= parameter.
+CHANNEL_SOURCES = {
+    "craigslist_dfw": "craigslist_dfw",
+    "commissioncrowd_rephunter": "commission_crowd",
+    "reddit": "reddit_sales",
+    "upwork_indeed": "upwork",
+}
+
+
+def tracked_url(base_url: str, source: str) -> str:
+    """Append ?src=<source> so Radar can attribute each applicant to the ad they came from."""
+    parts = urllib.parse.urlsplit(base_url)
+    query = urllib.parse.parse_qs(parts.query)
+    query["src"] = [source]
+    return urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(query, doseq=True)))
 
 
 def extract_supabase_config() -> Dict[str, str]:
@@ -88,7 +106,8 @@ class JobBoardSyndicator:
 
     @staticmethod
     def generate_all(audition_url: str = DEFAULT_AUDITION_URL) -> Dict[str, Dict[str, str]]:
-        return {
+        urls = {k: tracked_url(audition_url, v) for k, v in CHANNEL_SOURCES.items()}
+        ads = {
             "craigslist_dfw": {
                 "channel": "Craigslist DFW (sales / biz dev & gigs -> talent)",
                 "title": "B2B Outbound Opener (DFW Self-Storage) — $0 Cost to Prospect ($40/Site + 20% 12-Mo Residuals)",
@@ -105,7 +124,7 @@ class JobBoardSyndicator:
                     "• Browser-based Calling Console pre-loaded with 600+ scored DFW self-storage leads (including Google Review 'Recent Gate Pain' snippets).\n"
                     "• 1-Click SMS & Email Terms sender + live objection playbook.\n\n"
                     "NO RESUMES OR ZOOM INTERVIEWS.\n"
-                    f"Listen to the pitch & record a 30-second storage manager voice audition here:\n{audition_url}"
+                    f"Listen to the pitch & record a 30-second storage manager voice audition here:\n{urls['craigslist_dfw']}"
                 ),
             },
             "commissioncrowd_rephunter": {
@@ -118,7 +137,7 @@ class JobBoardSyndicator:
                     "PORTFOLIO RESIDUALS:\n"
                     "• $40 per facility on first paid dispatch + 20% trailing commission for 12 months.\n"
                     "• Full Multi-Site Attribution: One regional manager with 12 DFW properties = 12x bounties ($480) + 12 months of trailing volume across the entire portfolio.\n\n"
-                    f"Interactive Commission Calculator & 60-Second Voice Audition:\n{audition_url}"
+                    f"Interactive Commission Calculator & 60-Second Voice Audition:\n{urls['commissioncrowd_rephunter']}"
                 ),
             },
             "reddit": {
@@ -132,7 +151,7 @@ class JobBoardSyndicator:
                     "- $40 bounty per facility on first paid dispatch\n"
                     "- 20% trailing residual on every dispatch from your book for 12 months (including multi-property operators)\n"
                     "- Realistic 20 hr/wk active book: $2,100–$3,800/mo by Month 3\n\n"
-                    f"Skip the resume — complete our 60-second browser voice audition here:\n{audition_url}"
+                    f"Skip the resume — complete our 60-second browser voice audition here:\n{urls['reddit']}"
                 ),
             },
             "upwork_indeed": {
@@ -143,10 +162,14 @@ class JobBoardSyndicator:
                     "Deliverables & Milestones:\n"
                     "1. Milestone 1 ($50 Fast-Start): Complete 10 verified Vendor-on-File (VOF) enrollments using our pre-scored DFW lead queue ($0 cost to the facility).\n"
                     "2. Ongoing Bounties & Residuals: $40 per activated facility + 20% trailing commission on all dispatch fees for 12 months.\n\n"
-                    f"To apply, record the 30-second storage manager opener at:\n{audition_url}"
+                    f"To apply, record the 30-second storage manager opener at:\n{urls['upwork_indeed']}"
                 ),
             },
         }
+        for key, item in ads.items():
+            item["source"] = CHANNEL_SOURCES[key]
+            item["link"] = urls[key]
+        return ads
 
 
 # ============================================================================
@@ -207,7 +230,7 @@ class OutboundHeadhunter:
             f"Hey {first_name} — saw your B2B outbound background. We run Texas Gate Dispatch (600+ DFW self-storage facilities) "
             f"and are adding 2 commission openers. Storage managers pay $0 to list us as their backup gate vendor, and you earn a "
             f"$50 fast-start on your first 10 enrollments + $40/site bounty + 20% 12-mo residuals across multi-site portfolios. "
-            f"Skip the interview and try our 60-sec voice audition here: {DEFAULT_AUDITION_URL}"
+            f"Skip the interview and try our 60-sec voice audition here: {tracked_url(DEFAULT_AUDITION_URL, 'direct_invite')}"
         )
         return {
             "name": name,
@@ -227,7 +250,7 @@ SAMPLE_REP_CANDIDATES: List[Dict[str, Any]] = [
         "phone": "214-555-0148",
         "email": "marcus.vance.sales@example.com",
         "city": "Arlington, TX",
-        "source": "commissioncrowd",
+        "source": "commission_crowd",
         "hours_per_week": 25,
         "capabilities": ["b2b_cold_calling", "property_management", "commission_only", "texas_local"],
         "notes": "6 yrs B2B commercial roofing & parking lot striping cold calling across DFW. Already calls property & storage managers daily. Loves the $0-cost Vendor-on-File opener.",
@@ -251,7 +274,7 @@ SAMPLE_REP_CANDIDATES: List[Dict[str, Any]] = [
         "phone": "817-555-0129",
         "email": "devon.b.dfw@example.com",
         "city": "Fort Worth, TX",
-        "source": "reddit",
+        "source": "reddit_sales",
         "hours_per_week": 15,
         "capabilities": ["b2b_cold_calling", "texas_local"],
         "notes": "Sourced via r/DFWJobs. Inside sales rep with weekday mornings free (9am-1pm CT) to dial Tarrant County storage yards.",
@@ -310,6 +333,7 @@ def main() -> int:
             print("=" * 76)
             print(f"CHANNEL: {item['channel']} [{key}]")
             print(f"TITLE  : {item['title']}")
+            print(f"LINK   : {item['link']}  (applicants tagged source={item['source']})")
             print("-" * 76)
             print(item["body"])
             print()

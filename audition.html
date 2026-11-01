@@ -289,6 +289,15 @@ async function submitAudition(){
   $('okBox').style.display='block';
 }
 
+// Ad links carry ?src=<channel> so Radar can tell which ad each applicant came from.
+(function presetSource(){
+  try{
+    const src=new URLSearchParams(location.search).get('src');
+    const sel=$('c_src');
+    if(src&&[...sel.options].some(o=>o.value===src))sel.value=src;
+  }catch(_e){}
+})();
+
 recalc();
 </script>
 </body>
