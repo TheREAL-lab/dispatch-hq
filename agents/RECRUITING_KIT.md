@@ -18,12 +18,12 @@ The #1 killer of commission-only outbound teams is asking reps to cold-call a hi
 3. **Three-Stack 1099 Rep Compensation (`DOC 05`):**
    - **Fast-Start VOF Milestone (`\$50` Bonus):** Paid when a new rep completes their first **10 verified Vendor-on-File (`vendor_on_file = true`) enrollments** (requires manager name, direct phone/email, and `DOC 02` sent). Caps customer acquisition cost at **\$5/enrolled facility** while giving new reps a guaranteed Week-1 win.
    - **First-Dispatch Bounty (`\$40.00` Flat):** Paid the first time any facility closed by that rep completes a paid dispatch (`\$89` or `\$149`).
-   - **12-Month Trailing Residual (`20%`):** Paid on every subsequent paid dispatch from that facility for 12 full months (`\$17.80` on Standard `\$89`; `\$29.80` on Emergency `\$149`).
+   - **12-Month Trailing Residual (`20%`):** Paid on every paid dispatch from that facility — including the first one, on top of the `\$40` bounty (DOC 05 §3(2)) — for 12 full months (`\$17.80` on Standard `\$89`; `\$29.80` on Emergency `\$149`).
    - **Multi-Property Operator Multiplier:** Regional storage supervisors frequently oversee **5 to 15 DFW locations**. When a rep signs a regional manager, every facility roof under that `operator_group` is credited to the closing rep (`closed_by` = the rep's user id), earning the `\$40` first-dispatch bounty + `20%` 12-month residual across **every single property**.
 
 | Metric | Standard Dispatch (`\$89`) | Emergency Same-Day (`\$149`) |
 | :--- | :---: | :---: |
-| **First Paid Dispatch (`\$40` Bounty to Rep)** | **\$49.00 Net to House (55%)** | **\$109.00 Net to House (73%)** |
+| **First Paid Dispatch (`\$40` Bounty + `20%` to Rep)** | **\$31.20 Net to House (35%)** | **\$79.20 Net to House (53%)** |
 | **Repeat Dispatch (`20%` Residual to Rep)** | **\$71.20 Net to House (80%)** | **\$119.20 Net to House (80%)** |
 
 ---
@@ -79,5 +79,21 @@ python3 agents/recruiting_swarm.py sweep-leads --push
    - This automatically marks the candidate `promoted` and opens a pre-filled message containing [`docs.html?doc=d5`](../docs.html) (Independent Sales Rep Agreement) and the [`index.html`](../index.html) Console link.
 3. **Activate in Command HQ (`index.html` → `Team` tab):**
    - Add the rep's email under **Staff Roster** with role `employee` (displayed as `1099 Sales Rep`).
-   - Click **`+ Deal 25 Leads`** next to their name to assign 25 uncalled, top-scored DFW storage facilities exclusively to their queue (`assigned_to` = the rep's user id).
-   - If a rep goes inactive for 72+ hours, click **`Reclaim Uncalled`** to return their untouched leads back to the open pool.
+   - Click **Approve as 1099 Rep**, then the rep's **Onboarding** checklist button: record the date DOC 05 was signed, the date the W-9 was received, their payout method and cell. **`+ Deal 25 Leads` stays locked until DOC 05 and W-9 are both recorded.**
+   - Click **`+ Deal 25 Leads`** next to their name to assign 25 uncalled, top-scored DFW storage facilities exclusively to their queue (`assigned_to` = the rep's user id). Reps only ever see facilities dealt to them or closed by them — there is no open pool on the rep side.
+   - The Team table shows each rep's **Calls 7d** and **Last active** (stamped whenever they log a call). If a rep goes inactive for 72+ hours, click **`Reclaim Uncalled`** to return their untouched leads back to the open pool.
+
+---
+
+## 4. Owner SOP: Monthly Payout (by the 10th, per DOC 05 §3)
+
+1. Open **Team** — the **Unpaid** column is `rep_payout_balance.balance_usd` (commission earned + VOF bonuses − payouts recorded).
+2. Confirm a W-9 is on file (the payout drawer warns if not).
+3. Send the payment (Zelle / ACH / PayPal), then click **Record Payout**, split the amount into commission vs. VOF bonus, and paste the confirmation number. The rep sees it immediately under **My Pay → Payouts**.
+4. `rep_payouts` is the year-end 1099-NEC record — confirm the current reporting threshold with your CPA.
+
+## 5. What reps can and can't touch (enforced in the database)
+
+- **Facilities / call log:** only leads assigned to or closed by them; every logged touch is stamped with their user id (`outreach_log.rep_id`) and can't be edited afterwards.
+- **Dispatches:** they can request one ($89 / $149 only) and add notes; status, fee, fee-collected, tech and QA fields are owner-only. They can see dispatches on facilities they closed.
+- **Off-limits:** tech roster, Radar lead/tech candidate queues, other reps' commissions and payouts.

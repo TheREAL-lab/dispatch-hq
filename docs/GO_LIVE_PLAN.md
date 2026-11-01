@@ -8,13 +8,15 @@ You want this session to end with Dispatch HQ ready to **actively recruit, onboa
 | Lead supply | **88** facilities (ads and README claim "600+"); 86 uncalled; 75 already assigned (50 to the owner, 25 to the one rep) → **~13 open leads** | Each new rep gets "+ Deal 25 Leads". Right now there aren't enough leads to seat even one more rep. The ads also overstate the lead count. |
 | Fulfillment | **0 active techs** (1 on file), 0 dispatches, 23 unvetted `tech_candidates` | Reps are paid only on *paid dispatches*. With no tech to send when a facility calls, reps earn $0 and quit. It also burns the facilities they signed up. |
 | Data access | Reps (`employee`) can **SELECT/UPDATE every facility**, read the whole `outreach_log`, and **insert/update `techs`**. `outreach_log` has **no rep column** | One bad hire can export the entire lead list or edit other reps' leads and the tech roster. Nothing tracks per-rep calls or accountability. |
-| Payouts | `rep_commissions` / `rep_vof_milestones` work out what's *owed*. Nothing records what's been *paid*. The view pays the **20% trail on the first dispatch as well as the $40 bounty** (DOC 05 and the kit say first dispatch = bounty only) | You can't run a payout or keep 1099 records, and the math disagrees with the signed agreement. |
+| Payouts | `rep_commissions` / `rep_vof_milestones` work out what's *owed*. Nothing records what's been *paid*. *(Correction: the view pays $40 + 20% on the first dispatch, which matches DOC 05 §3(2); the recruiting kit's wording and unit-economics table were what was wrong — fixed.)* | You can't run a payout or keep 1099 records. |
 
 Other findings: an `e2e-test@example.com` test candidate is in `rep_candidates`. Security Advisor shows `rep_commissions` and `contractor_performance` are SECURITY DEFINER views, `dhq_*` functions can be called by `anon`, leaked-password protection is off, and the GraphQL schema exposes legacy tables (`posts`, `users`, `bids`…). `docs.html` says contracts are signed by "Taylor Keup d/b/a" until the LLC is filed.
 
 ---
 
-## Phase 1 — Lock down data before outsiders get logins (code + migration)
+## Phase 1 — Lock down data before outsiders get logins (code + migration) — ✅ DONE 2026-11-01
+Shipped as `supabase/migrations/20261101_rep_hiring_readiness.sql` (applied live). Item 6 kept the existing commission math (it matches DOC 05). Leaked-password protection is still a dashboard toggle for the owner.
+
 New migration `supabase/migrations/20261101_rep_hiring_readiness.sql`, applied through the Supabase MCP `apply_migration`:
 1. **`outreach_log.rep_id uuid default auth.uid() references auth.users`**, plus a backfill (existing rows → owner). Index on `(rep_id, contacted_at)`.
 2. **Facilities RLS, split by role.** Owner: unchanged. Employee: SELECT/UPDATE only where `assigned_to = auth.uid() OR closed_by = auth.uid()`. No visibility into the open pool (the owner deals leads). The existing `trg_facility_rep_attribution` attribution trigger stays as the second guard.
