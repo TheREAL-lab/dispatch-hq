@@ -144,11 +144,13 @@ table.t th{color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spa
 <script>
 const SB_URL='https://teptzyvzuenolwtfosht.supabase.co', SB_KEY='sb_publishable_4LgHf6k24QMus_1nvHPgSg__3rjqh52';
 let sb, me={role:null,uid:null,email:null,name:null,scope:'all'}, view='command', signup=false;
-let F=[], T=[], D=[], O=[], STAFF=[], COMM=[], MILE=[], SET={}, FEE=89, FEE_RUSH=149, pipeFilter='queue', pipeSearch='', jobFilter='active';
+let F=[], T=[], D=[], O=[], STAFF=[], COMM=[], MILE=[], BAL=[], PAY=[], TECH_READY=true, SET={}, FEE=89, FEE_RUSH=149, pipeFilter='queue', pipeSearch='', jobFilter='active';
 let calcEnroll=12, calcMulti=2;
 const isOwner=()=>me.role==='owner';
-const myLeads=()=>isOwner()?F:F.filter(f=>f.assigned_to===me.uid||f.closed_by===me.uid||!f.assigned_to);
+const myLeads=()=>isOwner()?F:F.filter(f=>f.assigned_to===me.uid||f.closed_by===me.uid);
 const myOwnedLeads=()=>F.filter(f=>f.assigned_to===me.uid||f.closed_by===me.uid);
+const onboarded=s=>!!(s&&(s.is_primary||s.role==='owner'||(s.agreement_signed_at&&s.w9_received_at)));
+const money=n=>'$'+(+n||0).toFixed(2);
 const repName=uid=>{const s=STAFF.find(x=>x.user_id===uid);return s?(s.full_name||s.email.split('@')[0]):'rep'};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -223,7 +225,10 @@ async function loadAll(){
     sb.from('outreach_log').select('*').order('contacted_at',{ascending:false}).limit(500),
     sb.from('app_settings').select('*'),
     sb.from('rep_commissions').select('*'),
-    sb.from('rep_vof_milestones').select('*')
+    sb.from('rep_vof_milestones').select('*'),
+    sb.from('rep_payout_balance').select('*'),
+    sb.from('rep_payouts').select('*').order('paid_on',{ascending:false}),
+    sb.rpc('dhq_dispatch_ready')
   ];
   if(isOwner()){
     q.push(sb.from('techs').select('*'));
@@ -236,9 +241,11 @@ async function loadAll(){
   FEE_RUSH=parseFloat(SET.emergency_fee_usd||'149');
   COMM=r[4].data||[];
   MILE=r[5].data||[];
+  BAL=r[6].data||[]; PAY=r[7].data||[];
+  TECH_READY=r[8].error?true:!!r[8].data;
   if(isOwner()){
-    T=r[6].data||[];
-    STAFF=r[7].data||[];
+    T=r[9].data||[];
+    STAFF=r[10].data||[];
     const meStaff=STAFF.find(s=>s.user_id===me.uid);
     if(meStaff&&meStaff.full_name)me.name=meStaff.full_name;
   }else{
@@ -269,8 +276,7 @@ function kpis(){
     const earned=D.filter(d=>d.status==='approved').reduce((s,d)=>s+(+d.coordination_fee_usd||0),0);
     return {callsToday,convos,active,earned};
   }
-  const myFIds=new Set(myOwnedLeads().map(f=>f.id));
-  const callsToday=O.filter(o=>(o.contacted_at||'').slice(0,10)===today&&myFIds.has(o.facility_id)).length;
+  const callsToday=O.filter(o=>(o.contacted_at||'').slice(0,10)===today&&o.rep_id===me.uid).length;
   const convos=myOwnedLeads().filter(f=>CONVO.includes(f.call_status)).length;
   const enrolled=myOwnedLeads().filter(f=>['vendor_on_file','client'].includes(f.call_status)).length;
   const myComm=COMM.filter(c=>c.rep_id===me.uid||!c.rep_id).reduce((s,c)=>s+(+c.bounty_usd||0)+(+c.trail_usd||0),0)+mileBonusFor(me.uid);
@@ -295,8 +301,11 @@ function rCommand(){
       '<div class="kpi"><div class="n">'+k.convos+'</div><div class="l">My conversations</div></div>'+
       '<div class="kpi"><div class="n">'+k.enrolled+'<span style="font-size:13px;color:var(--dim)">/10</span></div><div class="l">Enrolled facilities</div><div class="bar"><i style="width:'+Math.min(100,(k.enrolled%10)*10)+'%"></i></div></div>'+
       '<div class="kpi"><div class="n">$'+k.myComm.toFixed(0)+'</div><div class="l">My commissions</div></div></div>'+
-      '<div class="note"><strong>Dialer Tip:</strong> Tap any facility below to open the live call script, objection cards, and 1-click SMS/Email Terms sender. Logging a conversation automatically claims the account in your name.</div>');
-  return topBar+
+      '<div class="note"><strong>Dialer Tip:</strong> Tap any facility below to open the live call script, objection cards, and 1-click SMS/Email Terms sender. Your queue holds the leads dealt to you; ask the owner for a fresh batch when it runs low.</div>');
+  const capacity=TECH_READY?'':(isOwner()?
+    '<div class="note" style="border-color:var(--red,#e5484d)"><strong>No dispatchable techs.</strong> No active tech has current insurance on file. Facilities your reps enroll can\'t be served (and reps can\'t earn) until you activate at least one in <a href="#" onclick="go(\'techs\');return false" style="color:var(--hazard)">Techs</a>.</div>':
+    '<div class="note"><strong>Heads up:</strong> the tech bench is being staffed. Keep enrolling facilities as Vendor-on-File; if one has a gate down right now, submit the dispatch and Operations will confirm timing with them.</div>');
+  return topBar+capacity+
     '<h2 class="sec">Priority Call Queue ('+due.length+')</h2>'+
     (due.length?due.map(cardFac).join(''):'<div class="empty">Queue clear! Ask owner for a fresh lead batch or check Pipeline.</div>')+
     '<h2 class="sec">Active Dispatches</h2>'+
@@ -453,6 +462,7 @@ function rCommissions(){
        '<div class="bar" style="margin-top:8px"><i style="width:'+Math.min(100,(myMile.progress/mileTarget)*100)+'%"></i></div>'+
        '<div class="mut" style="margin-top:6px">Every '+mileTarget+' verified facilities where you log the decision-maker, current vendor, and send our Dispatch Terms unlocks a $'+mileBonus+' fast-start bonus on top of your $'+(SET.commission_bounty_usd||40)+' first-dispatch bounty + '+(SET.commission_percent||20)+'% 12-month trail.</div>'+
      '</div>'+
+     rPayoutPanel()+
      '<div class="note">Paid monthly on the 10th for coordination fees actually collected: <strong>$'+(SET.commission_bounty_usd||40)+' first-fee bounty</strong> per facility + <strong>'+(SET.commission_percent||20)+'% trailing commission</strong> for '+(SET.commission_window_months||12)+' months. <a href="docs.html#wrap-d5" target="_blank" style="color:var(--hazard)">View Sales Rep Agreement (DOC 05) ↗</a></div>'+
      (myVof.length?'<h2 class="sec">My Enrolled Portfolio ('+myVof.length+')</h2>'+myVof.map(cardFac).join(''):'');
   }
@@ -460,33 +470,109 @@ function rCommissions(){
   COMM.forEach(c=>{(reps[c.rep_id]=reps[c.rep_id]||[]).push(c)});
   const staffReps=STAFF.filter(s=>s.role!=='pending');
   if(!staffReps.length&&!Object.keys(reps).length)return '';
-  return '<h2 class="sec">Sales Team &amp; Commission Leaderboard</h2><table class="t"><tr><th>Rep</th><th>Assigned</th><th>Convos</th><th>VOF / Clients</th><th>Owed (mo)</th><th>All time</th></tr>'+
+  return '<h2 class="sec">Sales Team &amp; Commission Leaderboard</h2><table class="t"><tr><th>Rep</th><th>Assigned</th><th>Convos</th><th>VOF / Clients</th><th>Earned (mo)</th><th>All time</th><th>Unpaid</th></tr>'+
    staffReps.map(s=>{
      const leads=F.filter(f=>f.assigned_to===s.user_id).length;
      const convos=F.filter(f=>(f.assigned_to===s.user_id||f.closed_by===s.user_id)&&CONVO.includes(f.call_status)).length;
      const clients=F.filter(f=>(f.closed_by===s.user_id||f.assigned_to===s.user_id)&&['vendor_on_file','client'].includes(f.call_status)).length;
      const rows=reps[s.user_id]||[];
      return '<tr><td>'+esc(s.full_name||s.email)+(s.is_primary?' ★':'')+'</td><td>'+leads+'</td><td>'+convos+'</td><td>'+clients+
-      '</td><td>$'+sum(rows.filter(c=>c.month===mo)).toFixed(2)+'</td><td>$'+(sum(rows)+mileBonusFor(s.user_id)).toFixed(2)+'</td></tr>'}).join('')+'</table>';
+      '</td><td>$'+sum(rows.filter(c=>c.month===mo)).toFixed(2)+'</td><td>$'+(sum(rows)+mileBonusFor(s.user_id)).toFixed(2)+'</td><td>'+money((BAL.find(b=>b.rep_id===s.user_id)||{}).balance_usd)+'</td></tr>'}).join('')+'</table>';
 }
 function rTeam(){
   if(!isOwner())return '';
   const unass=F.filter(f=>!f.assigned_to&&['not_called','no_answer'].includes(f.call_status)).length;
-  return '<div class="note"><strong>Unassigned Queue Pool:</strong> <strong>'+unass+'</strong> facilities ready to deal. Recruiting pipeline: <a href="radar.html" style="color:var(--hazard)">Radar → Sales Reps</a> · Public applicant link: <a href="audition.html" target="_blank" style="color:var(--hazard)">audition.html ↗</a></div>'+
-   (STAFF.length?'<table class="t"><tr><th>Name</th><th>Role</th><th>Leads</th><th>Actions</th></tr>'+
+  const wk=Date.now()-7*864e5;
+  const ago=t=>{if(!t)return 'never';const h=(Date.now()-new Date(t))/36e5;return h<1?'<1h ago':h<48?Math.round(h)+'h ago':Math.round(h/24)+'d ago'};
+  return '<div class="note"><strong>Unassigned Queue Pool:</strong> <strong>'+unass+'</strong> facilities ready to deal'+
+   (unass<25?' — <span style="color:var(--hazard)">not enough for a full 25-lead batch; import more leads via Radar before seating another rep</span>':'')+
+   '. Recruiting pipeline: <a href="radar.html" style="color:var(--hazard)">Radar → Sales Reps</a> · Public applicant link: <a href="audition.html" target="_blank" style="color:var(--hazard)">audition.html ↗</a></div>'+
+   '<div class="note"><strong>Onboarding gate:</strong> a rep can\'t be dealt leads until their signed DOC 05 and W-9 are recorded. Click a rep\'s checklist to update it.</div>'+
+   (STAFF.length?'<table class="t"><tr><th>Name</th><th>Role</th><th>Onboarding</th><th>Leads</th><th>Calls 7d</th><th>Last active</th><th>Unpaid</th><th>Actions</th></tr>'+
    STAFF.map(s=>{
      const nLeads=F.filter(f=>f.assigned_to===s.user_id).length;
-     return '<tr><td>'+esc(s.full_name||s.email)+(s.is_primary?' ★':'')+'</td><td>'+esc(s.role)+'</td>'+
-     '<td>'+nLeads+'</td><td>'+(s.is_primary?'<button class="b sm" onclick="dealLeads(\''+s.user_id+'\',25)">+25 Leads</button>':(
+     const calls7=O.filter(o=>o.rep_id===s.user_id&&new Date(o.contacted_at)>=wk).length;
+     const bal=(BAL.find(b=>b.rep_id===s.user_id)||{}).balance_usd;
+     const ok=onboarded(s);
+     const chk=s.role==='employee'?
+       '<button class="b sm'+(ok?'':' warn')+'" onclick="openOnboard(\''+s.user_id+'\')">'+
+        (s.agreement_signed_at?'✓':'✗')+' DOC 05 · '+(s.w9_received_at?'✓':'✗')+' W-9'+(s.payout_method?' · '+esc(s.payout_method):'')+'</button>':
+       (s.role==='pending'?'<span class="mut">awaiting approval</span>':'<span class="mut">—</span>');
+     return '<tr><td>'+esc(s.full_name||s.email)+(s.is_primary?' ★':'')+(s.phone?'<div class="mut">'+esc(s.phone)+'</div>':'')+'</td><td>'+esc(s.role)+'</td>'+
+     '<td>'+chk+'</td><td>'+nLeads+'</td><td>'+calls7+'</td><td>'+(s.role==='employee'?ago(s.last_active_at):'')+'</td>'+
+     '<td>'+(s.role==='employee'?money(bal):'')+'</td><td>'+(s.is_primary?'<button class="b sm" onclick="dealLeads(\''+s.user_id+'\',25)">+25 Leads</button>':(
       (s.role==='pending'?
        '<button class="b sm go" onclick="setRole(\''+s.user_id+'\',\'employee\')">Approve as 1099 Rep</button> '+
        '<button class="b sm" onclick="setRole(\''+s.user_id+'\',\'owner\')">Make Owner</button> '+
        '<button class="b sm warn" onclick="dropStaff(\''+s.user_id+'\')">Reject</button>':
-       '<button class="b sm go" onclick="dealLeads(\''+s.user_id+'\',25)">+ Deal 25 Leads</button> '+
+       '<button class="b sm go" '+(ok?'':'disabled title="Record signed DOC 05 + W-9 first" ')+'onclick="dealLeads(\''+s.user_id+'\',25)">+ Deal 25 Leads</button> '+
        '<button class="b sm" onclick="reclaimLeads(\''+s.user_id+'\')">Reclaim Uncalled</button> '+
-       '<button class="b sm" onclick="setScope(\''+s.user_id+'\',\''+(s.jobs_scope==='all'?'assigned':'all')+'\')">Scope: '+(s.jobs_scope||'all')+'</button> '+
+       (s.role==='employee'?'<button class="b sm" onclick="openPayout(\''+s.user_id+'\')">Record Payout</button> ':'')+
+       '<button class="b sm" onclick="setScope(\''+s.user_id+'\',\''+(s.jobs_scope==='all'?'assigned':'all')+'\')">Scope: '+(s.jobs_scope||'assigned')+'</button> '+
        '<button class="b sm warn" onclick="dropStaff(\''+s.user_id+'\')">Remove</button>')))+'</td></tr>'}).join('')+'</table>'
-   :'<div class="empty">Just you. Share audition.html or check Radar → Sales Reps to onboard callers.</div>');
+   :'<div class="empty">Just you. Share audition.html or check Radar → Sales Reps to onboard callers.</div>')+
+   rPayoutHistory();
+}
+// Rep-facing: what's owed vs. paid, from rep_payout_balance + rep_payouts.
+function rPayoutPanel(){
+  const b=BAL.find(x=>x.rep_id===me.uid)||{};
+  const mine=PAY.filter(p=>p.rep_id===me.uid);
+  return '<h2 class="sec">Payouts</h2><div class="kpis">'+
+   '<div class="kpi"><div class="n">'+money(b.total_earned_usd)+'</div><div class="l">Total earned</div></div>'+
+   '<div class="kpi"><div class="n">'+money(b.paid_usd)+'</div><div class="l">Paid to you</div></div>'+
+   '<div class="kpi"><div class="n">'+money(b.balance_usd)+'</div><div class="l">Pending payout</div></div></div>'+
+   (mine.length?'<table class="t"><tr><th>Paid on</th><th>Period</th><th>Amount</th><th>Method</th><th>Ref</th></tr>'+
+     mine.map(p=>'<tr><td>'+esc(p.paid_on)+'</td><td>'+esc((p.period_start||'')+(p.period_end?' → '+p.period_end:''))+'</td><td>'+money(p.total_usd)+'</td><td>'+esc(p.method||'')+'</td><td>'+esc(p.reference||'')+'</td></tr>').join('')+'</table>'
+     :'<div class="mut">No payouts recorded yet.</div>');
+}
+function rPayoutHistory(){
+  if(!PAY.length)return '';
+  return '<h2 class="sec">Payout Ledger</h2><table class="t"><tr><th>Paid on</th><th>Rep</th><th>Period</th><th>Commission</th><th>VOF bonus</th><th>Total</th><th>Method / Ref</th></tr>'+
+   PAY.map(p=>'<tr><td>'+esc(p.paid_on)+'</td><td>'+esc(repName(p.rep_id))+'</td><td>'+esc((p.period_start||'')+(p.period_end?' → '+p.period_end:''))+'</td><td>'+money(p.commission_usd)+'</td><td>'+money(p.vof_bonus_usd)+'</td><td>'+money(p.total_usd)+'</td><td>'+esc((p.method||'')+(p.reference?' · '+p.reference:''))+'</td></tr>').join('')+'</table>';
+}
+function openOnboard(uid){
+  const s=STAFF.find(x=>x.user_id===uid); if(!s)return;
+  const d=t=>t?String(t).slice(0,10):'';
+  openDrawer(dh('Onboarding — '+esc(s.full_name||s.email))+
+   '<div class="note">Required before dealing leads: signed <a href="docs.html#wrap-d5" target="_blank" style="color:var(--hazard)">DOC 05</a> and a completed IRS W-9 (keep both on file outside this app).</div>'+
+   '<div class="row"><div><label>DOC 05 signed on</label><input id="ob_ag" type="date" value="'+d(s.agreement_signed_at)+'"></div>'+
+   '<div><label>W-9 received on</label><input id="ob_w9" type="date" value="'+d(s.w9_received_at)+'"></div></div>'+
+   '<div class="row"><div><label>Payout method</label><input id="ob_pm" placeholder="e.g. Zelle 214-555-0100" value="'+esc(s.payout_method||'')+'"></div>'+
+   '<div><label>Cell phone</label><input id="ob_ph" value="'+esc(s.phone||'')+'"></div></div>'+
+   '<button class="b go" style="width:100%" onclick="saveOnboard(\''+uid+'\')">Save checklist</button>');
+}
+async function saveOnboard(uid){
+  const ts=v=>v?new Date(v+'T12:00:00').toISOString():null;
+  const {error}=await sb.from('dispatch_staff').update({agreement_signed_at:ts($('ob_ag').value),w9_received_at:ts($('ob_w9').value),
+    payout_method:$('ob_pm').value.trim()||null,phone:$('ob_ph').value.trim()||null}).eq('user_id',uid);
+  if(error){toast(error.message);return}
+  toast('Checklist saved ✓');closeDrawer();await loadAll();render();
+}
+function openPayout(uid){
+  const s=STAFF.find(x=>x.user_id===uid)||{};
+  const b=BAL.find(x=>x.rep_id===uid)||{};
+  const now=new Date(), first=new Date(now.getFullYear(),now.getMonth()-1,1), last=new Date(now.getFullYear(),now.getMonth(),0);
+  const iso=d=>d.toISOString().slice(0,10);
+  openDrawer(dh('Record Payout — '+esc(s.full_name||s.email||''))+
+   '<div class="note">Earned '+money(b.total_earned_usd)+' (commission '+money(b.commission_earned_usd)+' + VOF bonus '+money(b.vof_bonus_earned_usd)+') · paid '+money(b.paid_usd)+' · <strong>unpaid '+money(b.balance_usd)+'</strong>'+
+   (s.w9_received_at?'':'<br><strong style="color:var(--hazard)">No W-9 on file — collect it before paying.</strong>')+'</div>'+
+   '<div class="row"><div><label>Period start</label><input id="po_ps" type="date" value="'+iso(first)+'"></div>'+
+   '<div><label>Period end</label><input id="po_pe" type="date" value="'+iso(last)+'"></div>'+
+   '<div><label>Paid on</label><input id="po_on" type="date" value="'+iso(now)+'"></div></div>'+
+   '<div class="row"><div><label>Commission paid ($)</label><input id="po_c" type="number" step="0.01" min="0" value="0"></div>'+
+   '<div><label>VOF bonus paid ($)</label><input id="po_v" type="number" step="0.01" min="0" value="0"></div></div>'+
+   '<div class="row"><div><label>Method</label><input id="po_m" value="'+esc(s.payout_method||'')+'" placeholder="Zelle / ACH / PayPal"></div>'+
+   '<div><label>Reference</label><input id="po_r" placeholder="Confirmation #"></div></div>'+
+   '<button class="b go" style="width:100%" onclick="savePayout(\''+uid+'\')">Record payout</button>');
+}
+async function savePayout(uid){
+  const c=parseFloat($('po_c').value)||0, v=parseFloat($('po_v').value)||0;
+  if(c<0||v<0||c+v<=0){toast('Enter an amount');return}
+  const {error}=await sb.from('rep_payouts').insert({rep_id:uid,commission_usd:c,vof_bonus_usd:v,
+    period_start:$('po_ps').value||null,period_end:$('po_pe').value||null,paid_on:$('po_on').value||undefined,
+    method:$('po_m').value.trim()||null,reference:$('po_r').value.trim()||null});
+  if(error){toast(error.message);return}
+  toast('Payout recorded ✓');closeDrawer();await loadAll();render();
 }
 function rSettings(){
   if(!isOwner())return '';
@@ -624,7 +710,9 @@ function openNewJob(fid){
 async function createJob(){
   const fid=$('j_f').value;
   const f=fac(fid);
-  const row={facility_id:fid,equipment_kind:$('j_k').value,issue:$('j_i').value||null,
+  if(!fid){toast('Pick a facility');return}
+  if(!$('j_i').value.trim()){toast('Describe the issue and site contact first');return}
+  const row={facility_id:fid,equipment_kind:$('j_k').value,issue:$('j_i').value.trim(),
    status:'requested',coordination_fee_usd:parseFloat($('j_fee').value)||FEE,assigned_to:me.uid};
   if($('j_t')&&$('j_t').value)row.tech_id=$('j_t').value;
   const {error}=await sb.from('dispatches').insert(row);
@@ -718,6 +806,8 @@ async function saveTech(id){
 }
 async function dealLeads(uid,count){
   if(!isOwner())return;
+  const st=STAFF.find(x=>x.user_id===uid);
+  if(!onboarded(st)){toast('Record signed DOC 05 + W-9 before dealing leads');openOnboard(uid);return}
   const pool=F.filter(f=>!f.assigned_to&&['not_called','no_answer'].includes(f.call_status))
     .sort((a,b)=>PRI_ORD[a.priority]-PRI_ORD[b.priority]).slice(0,count);
   if(!pool.length){toast('No unassigned leads left in queue');return}
@@ -731,6 +821,9 @@ async function reclaimLeads(uid){
   if(!isOwner())return;
   const stale=F.filter(f=>f.assigned_to===uid&&['not_called','no_answer'].includes(f.call_status)).map(f=>f.id);
   if(!stale.length){toast('No uncalled leads to reclaim');return}
+  const st=STAFF.find(x=>x.user_id===uid);
+  if(st&&st.last_active_at&&(Date.now()-new Date(st.last_active_at))<72*36e5&&
+     !confirm(repName(uid)+' logged a call in the last 72 hours. Reclaim their '+stale.length+' uncalled leads anyway?'))return;
   const {error}=await sb.from('facilities').update({assigned_to:null}).in('id',stale);
   if(error){toast(error.message);return}
   toast('Reclaimed '+stale.length+' uncalled leads ✓');
