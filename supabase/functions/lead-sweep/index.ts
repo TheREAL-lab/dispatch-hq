@@ -32,10 +32,15 @@ Deno.serve(async (req) => {
   const { data: isOwner } = await sb.rpc("dhq_is_owner");
   if (!isOwner) return json(403, { error: "Only the owner can run a lead sweep." });
 
-  const apiKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
+  // Edge Function secret first; otherwise the owner-only Vault secret `google_maps_api_key`.
+  let apiKey = Deno.env.get("GOOGLE_MAPS_API_KEY") || "";
+  if (!apiKey) {
+    const { data: vaultKey } = await sb.rpc("dhq_google_maps_key");
+    apiKey = typeof vaultKey === "string" ? vaultKey : "";
+  }
   if (!apiKey) {
     return json(412, {
-      error: "Google Maps key not set. Add GOOGLE_MAPS_API_KEY under Supabase → Edge Functions → Secrets.",
+      error: "Google Maps key not set. Add GOOGLE_MAPS_API_KEY under Supabase → Edge Functions → Secrets, or store it in Vault as google_maps_api_key.",
       code: "key_not_set",
     });
   }

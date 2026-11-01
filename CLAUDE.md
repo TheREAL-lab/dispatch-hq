@@ -37,6 +37,6 @@ See also the workspace master guide at [`../CLAUDE.md`](../CLAUDE.md).
 
 ## 4. Lead Sweep (Edge Function `lead-sweep`)
 - Source: [`supabase/functions/lead-sweep/`](./supabase/functions/lead-sweep/) — `index.ts` (handler: owner check via `dhq_is_owner`, runs as the caller so RLS applies) and `sweep.ts` (pure search/filter/score logic). Tests: `node --test supabase/functions/lead-sweep/sweep.test.ts`. Deploy with `verify_jwt: true`, both files.
-- Secret: `GOOGLE_MAPS_API_KEY` (Places API (New)) in Supabase Edge Function secrets. Never commit it or put it in the pages.
+- Key: Google Places API (New). The function uses the `GOOGLE_MAPS_API_KEY` Edge Function secret if set, otherwise the Vault secret `google_maps_api_key` via the owner-only RPC `dhq_google_maps_key()` ([`20261102_google_maps_key_from_vault.sql`](./supabase/migrations/20261102_google_maps_key_from_vault.sql), applied). **Currently stored in Vault.** Rotate with `vault.update_secret`. Never commit the key or put it in the pages.
 - Called from Radar → Facility Leads (`runSweep()`); body `{ cities?, dry_run?, max_calls? }` (cities must be from `DEFAULT_CITIES`; `max_calls` default 150, max 300).
 - Migration [`20261102_lead_sweeps.sql`](./supabase/migrations/20261102_lead_sweeps.sql) is **applied** (as `lead_sweeps`).
