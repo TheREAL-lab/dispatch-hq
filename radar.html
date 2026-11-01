@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Radar — Texas Gate Dispatch</title>
+<meta name="theme-color" content="#141414">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dispatch HQ">
+<script src="pwa.js" defer></script>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -84,6 +93,7 @@
     <h1>Radar</h1>
     <div class="navlinks">
       <a href="index.html">← Command HQ</a>
+      <a href="#" data-install style="display:none;color:var(--orange)" onclick="return false">⬇ Install app</a>
       <a href="docs.html">Legal & Docs</a>
       <a href="audition.html" target="_blank" style="color:var(--hazard)">1099 Audition Portal ↗</a>
     </div>

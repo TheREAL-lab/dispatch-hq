@@ -40,3 +40,8 @@ See also the workspace master guide at [`../CLAUDE.md`](../CLAUDE.md).
 - Key: Google Places API (New). The function uses the `GOOGLE_MAPS_API_KEY` Edge Function secret if set, otherwise the Vault secret `google_maps_api_key` via the owner-only RPC `dhq_google_maps_key()` ([`20261102_google_maps_key_from_vault.sql`](./supabase/migrations/20261102_google_maps_key_from_vault.sql), applied). **Currently stored in Vault.** Rotate with `vault.update_secret`. Never commit the key or put it in the pages.
 - Called from Radar → Facility Leads (`runSweep()`); body `{ cities?, dry_run?, max_calls? }` (cities must be from `DEFAULT_CITIES`; `max_calls` default 150, max 300).
 - Migration [`20261102_lead_sweeps.sql`](./supabase/migrations/20261102_lead_sweeps.sql) is **applied** (as `lead_sweeps`).
+
+## 5. Installable App (PWA)
+- `manifest.webmanifest` + `sw.js` + `pwa.js` + `icons/` make the site installable on laptop (Chrome/Edge) and Android from GitHub Pages (`https://thereal-lab.github.io/dispatch-hq/`). Any element with `data-install` becomes the install button.
+- `sw.js` only intercepts same-origin GETs: pages are network-first (offline falls back to cache), static files are stale-while-revalidate. Never cache Supabase/CDN requests. Bump `VERSION` when `SHELL` changes.
+- `audition.html` (public recruiting page) deliberately has no manifest link, so applicants aren't prompted to install Dispatch HQ.

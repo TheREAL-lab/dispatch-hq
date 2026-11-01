@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#141414">
 <title>Dispatch HQ — Texas Gate Dispatch</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dispatch HQ">
+<script src="pwa.js" defer></script>
 <!-- DHQ v2.2 command & 1099 rep console -->
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -106,8 +114,13 @@ table.t th{color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spa
 <body>
 <div class="wrap">
   <header class="top">
-    <div class="eyebrow">Texas Gate Dispatch</div>
-    <h1 class="site">Dispatch HQ</h1>
+    <div style="display:flex;align-items:flex-start;gap:10px">
+      <div style="flex:1;min-width:0">
+        <div class="eyebrow">Texas Gate Dispatch</div>
+        <h1 class="site">Dispatch HQ</h1>
+      </div>
+      <button class="b go" data-install style="display:none;padding:8px 12px;font-size:12px;white-space:nowrap" title="Install Dispatch HQ as an app on this device">⬇ Install app</button>
+    </div>
     <div class="who" id="who"></div>
   </header>
 

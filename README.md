@@ -22,6 +22,18 @@ Internal operations dashboard, 1099 sales rep calling console, candidate/lead ra
   - `DOC 04`: Subcontractor Onboarding Packet (W-9, COI, DPS License)
   - `DOC 05`: Independent Sales Rep Agreement (1099 Commission-Only + Multi-Property Portfolio Attribution)
 
+## Install as an App (Laptop & Android)
+
+Dispatch HQ is an installable web app (PWA). Once it's installed it opens in its own window from your desktop, taskbar or home screen, with no browser bar. It updates itself every time we deploy.
+
+Open **https://thereal-lab.github.io/dispatch-hq/** first, then:
+
+- **Laptop (Chrome or Edge on Windows, Mac or Chromebook):** click **⬇ Install app** in the Dispatch HQ header, or the install icon at the right end of the address bar. Then pin it to your taskbar or dock.
+- **Android (Chrome):** tap **⬇ Install app**, or ⋮ menu → **Install app** / **Add to Home screen**. Long-press the icon for the Radar and Document Kit shortcuts.
+- **iPhone (Safari):** Share → **Add to Home Screen**.
+
+Files: [`manifest.webmanifest`](./manifest.webmanifest), [`sw.js`](./sw.js) (pages are network-first with an offline fallback; Supabase traffic is never cached), [`pwa.js`](./pwa.js) (registers the service worker and runs the install button), [`icons/`](./icons). When you change the cached file list in `sw.js`, bump `VERSION`.
+
 ## Database & Recruiting Swarm
 
 - **Supabase Migration:** [`supabase/migrations/20261020_rep_sales_force_and_recruiting.sql`](./supabase/migrations/20261020_rep_sales_force_and_recruiting.sql)
