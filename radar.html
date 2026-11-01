@@ -113,6 +113,18 @@
       <div class="tab" id="tab-reps" onclick="setTab('reps')">Sales Reps (1099)</div>
     </div>
 
+    <div id="lead-toolbar" class="toolbar">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <button class="b sm go" id="sweep-full" onclick="runSweep(false)" title="Searches ~36 DFW cities on Google Maps (up to 150 API calls)">Run Sweep (all DFW)</button>
+        <input id="sweep-city" list="sweep-cities" placeholder="One city, e.g. Plano" style="width:170px;padding:6px 8px">
+        <datalist id="sweep-cities"></datalist>
+        <button class="b sm" id="sweep-city-btn" onclick="runSweep(true)" title="Search one city and add new leads">Sweep City</button>
+        <button class="b sm" id="sweep-test" onclick="runSweep(true,true)" title="Search one city but save nothing — checks the key and shows what it would add">Test (dry run)</button>
+      </div>
+      <div class="mut" id="sweep-status" style="font-size:12px"></div>
+    </div>
+    <div id="sweep-result" style="display:none"></div>
+
     <div id="rep-toolbar" class="toolbar" style="display:none">
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <button class="b sm go" id="rf-active" onclick="setRepFilter('active')">Active Auditions</button>
@@ -310,6 +322,8 @@ function setTab(t){
   $('tab-techs').classList.toggle('on',t==='techs');
   $('tab-reps').classList.toggle('on',t==='reps');
   $('rep-toolbar').style.display=t==='reps'?'flex':'none';
+  $('lead-toolbar').style.display=t==='leads'?'flex':'none';
+  if(t!=='leads')$('sweep-result').style.display='none';
   load();
 }
 
@@ -352,6 +366,54 @@ async function load(){
   const {count:pc}=await sb.from(table).select('*',{count:'exact',head:true}).eq('status','promoted');
   $('counts').innerHTML='<span>'+rows.length+' new · '+(pc||0)+' promoted</span>';
   render();
+  if(tab==='leads')loadSweepStatus();
+}
+
+/* ---------- Lead sweep (Edge Function: lead-sweep) ---------- */
+const SWEEP_CITIES=['Plano','Frisco','McKinney','Allen','Prosper','Celina','Little Elm','The Colony','Carrollton','Lewisville','Flower Mound','Denton','Wylie','Murphy','Sachse','Garland','Richardson','Rowlett','Rockwall','Mesquite','Dallas','Addison','Irving','Grand Prairie','Arlington','Fort Worth','Keller','Southlake','Mansfield','Princeton','Anna','Melissa','Forney','Waxahachie','Weatherford','Sherman'];
+async function loadSweepStatus(){
+  const dl=$('sweep-cities'); if(dl&&!dl.children.length)dl.innerHTML=SWEEP_CITIES.map(c=>'<option value="'+esc(c)+'">').join('');
+  const monthStart=new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+  const [last,month]=await Promise.all([
+    sb.from('lead_sweeps').select('*').order('started_at',{ascending:false}).limit(1),
+    sb.from('lead_sweeps').select('api_calls').gte('started_at',monthStart.toISOString())
+  ]);
+  if(last.error){$('sweep-status').textContent='';return;}
+  const l=(last.data||[])[0];
+  const calls=(month.data||[]).reduce((s,r)=>s+(r.api_calls||0),0);
+  $('sweep-status').textContent=l?('Last sweep '+new Date(l.started_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+
+    (l.dry_run?' (test)':'')+' · '+(l.inserted||0)+' added · '+calls+' Google calls this month'):'No sweeps yet';
+}
+async function runSweep(oneCity,dry){
+  const city=$('sweep-city').value.trim();
+  if(oneCity&&!city){toast('Type or pick a city first');$('sweep-city').focus();return;}
+  if(oneCity&&!SWEEP_CITIES.some(c=>c.toLowerCase()===city.toLowerCase())){toast('Pick a city from the list');return;}
+  if(!oneCity&&!confirm('Run a full DFW sweep? Up to 150 Google Maps calls (about 1–2 minutes).'))return;
+  const btns=['sweep-full','sweep-city-btn','sweep-test'].map($); btns.forEach(b=>b.disabled=true);
+  const box=$('sweep-result'); box.style.display='block';
+  box.innerHTML='<div class="card"><div class="meta">Sweeping '+(oneCity?esc(city):'all DFW cities')+(dry?' (dry run — nothing will be saved)':'')+'… this can take a minute.</div></div>';
+  try{
+    const body={dry_run:!!dry}; if(oneCity)body.cities=[city];
+    const {data,error}=await sb.functions.invoke('lead-sweep',{body});
+    let res=data;
+    if(error){
+      let msg=error.message;
+      try{const j=await error.context.json(); msg=j.error||msg; res=j.summary||null;}catch(_e){}
+      box.innerHTML='<div class="card"><div class="cname" style="color:var(--hazard)">Sweep failed</div><div class="meta">'+esc(msg)+'</div></div>';
+      if(!res)return;
+    }
+    const top=(res.top||[]).map(t=>'<li>'+esc(t.name)+' — '+esc(t.city||'')+' · '+t.score+(t.pain_recent?' · <strong>recent gate pain</strong>':'')+'</li>').join('');
+    box.innerHTML='<div class="card"><div class="row1"><span class="cname">'+(res.dry_run?'Test sweep (nothing saved)':'Sweep complete')+'</span>'+
+      '<span class="score">'+(res.dry_run?res.new_candidates:res.inserted)+'</span></div>'+
+      '<div class="meta">'+(res.dry_run?'Would add ':'Added ')+(res.dry_run?res.new_candidates:res.inserted)+' new leads ('+res.with_gate_pain+' with gate pain in reviews) · '+
+      res.found+' storage places found · skipped '+res.skipped_chain+' chains, '+res.skipped_duplicate+' already in your lists, '+res.skipped_closed+' closed, '+res.skipped_not_storage+' not storage · '+
+      res.api_calls+' Google calls'+(res.hit_call_cap?' (hit the call cap — run again later to continue)':'')+'</div>'+
+      (top?'<ol class="meta" style="margin:8px 0 0 18px">'+top+'</ol>':'')+
+      ((res.errors||[]).length?'<div class="meta" style="color:var(--hazard);margin-top:6px">'+esc(res.errors.slice(0,3).join(' | '))+'</div>':'')+'</div>';
+    if(!res.dry_run)load(); else loadSweepStatus();
+  }catch(e){
+    box.innerHTML='<div class="card"><div class="meta">Sweep error: '+esc(e.message)+'</div></div>';
+  }finally{btns.forEach(b=>b.disabled=false);}
 }
 
 async function loadRepCandidates(){
@@ -588,7 +650,7 @@ async function seedSampleReps(){
 }
 
 function render(){
-  if(!rows.length){$('list').innerHTML='<div class="empty">No new candidates. Run a sweep or ask Claude/Antigravity.</div>';return;}
+  if(!rows.length){$('list').innerHTML='<div class="empty">'+(tab==='leads'?'No new leads to review. Click <strong>Run Sweep</strong> above to search Google Maps for DFW self-storage facilities.':'No new candidates.')+'</div>';return;}
   $('list').innerHTML=rows.map(r=>{
     const bd=r.score_breakdown||{};
     const dist=bd.distance_mi?(' · '+bd.distance_mi+' mi'):'';

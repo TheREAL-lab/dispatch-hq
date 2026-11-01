@@ -2,18 +2,18 @@
 """
 Texas Gate Dispatch — Dispatch HQ 1099 Recruiting & Lead-Sweep Agent Swarm
 ==========================================================================
-Implements the 4-Agent Recruiting & Pipeline Swarm for Dispatch HQ:
+Implements the Recruiting & Pipeline Swarm for Dispatch HQ:
   1. JobBoardSyndicator   — Generates platform-tailored 1099 job ads & DMs
   2. OutboundHeadhunter   — Scores rep profiles (0-100) & generates DM/SMS hooks
   3. AuditionScreener     — Lists/ranks `rep_candidates` & generates onboarding packets
-  4. FacilityLeadSweeper  — Scores DFW self-storage leads for Gate Pain & seeds Radar
+  (Facility leads now come from the `lead-sweep` Edge Function: Radar → Facility Leads → Run Sweep.)
 
 Usage:
   python3 agents/recruiting_swarm.py status
   python3 agents/recruiting_swarm.py generate-ads [--url https://...]
   python3 agents/recruiting_swarm.py score-rep --name "Marcus Vance" --hrs 25 --tags b2b_cold_calling,property_management,texas_local --notes "6 yrs commercial roofing cold caller"
   python3 agents/recruiting_swarm.py seed-reps [--push]
-  python3 agents/recruiting_swarm.py sweep-leads [--push]
+  python3 agents/recruiting_swarm.py sweep-leads   # prints how to run the real Google Maps sweep
 """
 
 from __future__ import annotations
@@ -262,85 +262,6 @@ SAMPLE_REP_CANDIDATES: List[Dict[str, Any]] = [
 
 
 # ============================================================================
-# AGENT 4: FACILITY LEAD SWEEPER (GATE PAIN SCORER)
-# ============================================================================
-class FacilityLeadSweeper:
-    """Scores self-storage facilities for Gate Pain so 1099 reps always have warm prospects."""
-
-    PAIN_PATTERNS = [
-        (r"gate\s+(has\s+been\s+|is\s+|was\s+)?(broken|stuck|open|down|not\s+working)", 35, "recent_gate_broken"),
-        (r"keypad\s+(broken|dead|not\s+working|out)", 30, "keypad_failure"),
-        (r"locked\s+(in|out)|trapped\s+inside", 35, "tenant_locked_in_out"),
-        (r"chain\s+(off|broken)|arm\s+broken|hit\s+the\s+gate", 28, "mechanical_damage"),
-        (r"security\s+gate\s+open\s+for\s+(days|weeks|months)", 38, "chronic_gate_down"),
-    ]
-
-    @classmethod
-    def score_facility(cls, name: str, city: str, review_snippet: str, is_independent: bool = True) -> Dict[str, Any]:
-        score = 45
-        breakdown: Dict[str, int] = {"base_storage": 45}
-        pain_recent = False
-        pain_signal = False
-
-        for pattern, pts, label in cls.PAIN_PATTERNS:
-            if re.search(pattern, review_snippet, re.I):
-                score += pts
-                breakdown[label] = pts
-                pain_recent = True
-                pain_signal = True
-                break
-
-        if is_independent:
-            score += 15
-            breakdown["small_operator"] = 15
-
-        return {
-            "name": name,
-            "city": city,
-            "score": min(99, score),
-            "pain_recent": pain_recent,
-            "pain_signal": pain_signal,
-            "score_breakdown": breakdown,
-            "pain_evidence": [{"snippet": review_snippet, "detected_at": datetime.now(timezone.utc).strftime("%Y-%m-%d")}]
-            if review_snippet
-            else [],
-            "status": "new",
-        }
-
-    @classmethod
-    def sample_dfw_sweep(cls) -> List[Dict[str, Any]]:
-        raw = [
-            (
-                "Lone Star Boat & RV Storage — Denton Hwy",
-                "Haltom City",
-                "817-555-0194",
-                "Front sliding gate has been stuck open for two weeks and the keypad screen is completely blank.",
-                True,
-            ),
-            (
-                "Trinity Valley Self Storage",
-                "Carrollton",
-                "972-555-0162",
-                "Great manager on site, but the exit gate chain came off the sprocket again over the weekend.",
-                True,
-            ),
-            (
-                "Pioneer Parkway Climate & Drive-Up Storage",
-                "Grand Prairie",
-                "214-555-0177",
-                "Got locked inside after 7pm because the photo-eye sensor on the main gate wouldn't trigger.",
-                True,
-            ),
-        ]
-        results = []
-        for name, city, phone, snippet, indep in raw:
-            item = cls.score_facility(name, city, snippet, indep)
-            item["phone"] = phone
-            results.append(item)
-        return results
-
-
-# ============================================================================
 # CLI ENTRYPOINT
 # ============================================================================
 def main() -> int:
@@ -365,8 +286,7 @@ def main() -> int:
     p_seed = sub.add_parser("seed-reps", help="Preview or push sample 1099 rep candidates to Supabase")
     p_seed.add_argument("--push", action="store_true", help="Insert into Supabase public.rep_candidates")
 
-    p_sweep = sub.add_parser("sweep-leads", help="Run DFW Gate-Pain facility lead scorer")
-    p_sweep.add_argument("--push", action="store_true", help="Insert into Supabase public.lead_candidates")
+    sub.add_parser("sweep-leads", help="Explain how to run the Google Maps lead sweep (Radar)")
 
     args = parser.parse_args()
 
@@ -423,16 +343,12 @@ def main() -> int:
         return 0
 
     if args.cmd == "sweep-leads":
-        leads = FacilityLeadSweeper.sample_dfw_sweep()
-        print(f"Scored {len(leads)} DFW Self-Storage facilities with Recent Gate Pain:")
-        print(json.dumps(leads, indent=2))
-        if args.push:
-            try:
-                inserted = supabase_rest("lead_candidates", method="POST", payload=leads)
-                print(f"\n[OK] Inserted {len(inserted or [])} leads into public.lead_candidates.")
-            except urllib.error.HTTPError as exc:
-                err_body = exc.read().decode("utf-8", errors="ignore")
-                print(f"\n[NOTE] Supabase returned HTTP {exc.code}: {err_body}")
+        print("Facility lead sweeps run in Radar, not here:")
+        print("  radar.html -> Facility Leads -> Test (dry run) / Sweep City / Run Sweep (all DFW)")
+        print("It calls the `lead-sweep` Supabase Edge Function, which searches Google Maps")
+        print("(Places API (New), key in the GOOGLE_MAPS_API_KEY Edge Function secret), skips chains")
+        print("and leads you already have, scores gate pain from reviews, and adds new candidates")
+        print("to Radar for you to Promote or Dismiss.")
         return 0
 
     return 0

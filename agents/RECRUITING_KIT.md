@@ -52,8 +52,8 @@ python3 agents/recruiting_swarm.py score-rep \
 # 4. Seed or push sample 1099 rep candidates into Radar (`public.rep_candidates`)
 python3 agents/recruiting_swarm.py seed-reps --push
 
-# 5. Run the DFW Gate-Pain Facility Lead Sweeper
-python3 agents/recruiting_swarm.py sweep-leads --push
+# 5. Facility lead sweeps run in Radar (see "Owner SOP: Lead Sweep" below)
+python3 agents/recruiting_swarm.py sweep-leads   # prints the instructions
 ```
 
 ### Target Sourcing Channels & Cadence
@@ -97,3 +97,19 @@ python3 agents/recruiting_swarm.py sweep-leads --push
 - **Facilities / call log:** only leads assigned to or closed by them; every logged touch is stamped with their user id (`outreach_log.rep_id`) and can't be edited afterwards.
 - **Dispatches:** they can request one ($89 / $149 only) and add notes; status, fee, fee-collected, tech and QA fields are owner-only. They can see dispatches on facilities they closed.
 - **Off-limits:** tech roster, Radar lead/tech candidate queues, other reps' commissions and payouts.
+
+---
+
+## 6. Owner SOP: Lead Sweep (Google Maps → Radar)
+
+The rep pipeline is only as good as the lead pool: every new rep needs 25 fresh facilities. Sweep weekly, or whenever **Team** warns the unassigned pool is under 25.
+
+1. Open **Radar → Facility Leads**.
+2. **Test (dry run)** with one city (e.g. `Plano`): confirms the key works and shows what would be added; saves nothing.
+3. **Sweep City** to add one city, or **Run Sweep (all DFW)** for all ~36 cities (≤150 Google calls, 1–2 minutes).
+4. Review the new cards (highest score first). Cards tagged **Recent gate pain** quote the Google review. **Promote to Prospects** creates the facility (HOT if recent pain, WARM if older pain, else STANDARD); **Dismiss** hides it for good.
+5. Then deal leads from **Command HQ → Team → + Deal 25 Leads**.
+
+**What the sweep does** (`supabase/functions/lead-sweep`): searches "self storage in {city}, TX" on Google Places (New), up to 3 pages per city; drops closed businesses, non-storage results, and anything matching `lead_chain_blocklist` (big chains with national gate contracts); skips anything already in Radar or your facilities (matched by Google place ID, phone, or name + city); scores gate pain in reviews (+35 recent / +20 older), independent (+20), small operator (+15) or regional operator at 3+ sites (+10, a Multi-Property Multiplier target), phone (+10), no website (+10), and distance from Plano (+10 ≤15 mi / +5 ≤30 mi). Re-sweeping never resurrects leads you promoted or dismissed. Every run is logged in `lead_sweeps`.
+
+**Key & cost:** the Google key lives only in Supabase (Edge Functions → Secrets → `GOOGLE_MAPS_API_KEY`), restricted to Places API (New). Asking Google for reviews bills each search at its top Places tier, which has its own free monthly allowance; a weekly full sweep (~110 calls) should stay near or within it. Keep the daily quota cap and $10 budget alert in Google Cloud. Radar shows Google calls used this month next to the sweep buttons. Google returns at most 5 reviews per place, so a facility with no gate-pain quote may still have gate problems.
