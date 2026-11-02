@@ -376,7 +376,7 @@ function rJobs(){
 }
 function rTechs(){
   if(!isOwner())return '';
-  return '<div class="note">Dispatch guard is live: jobs physically can\'t be assigned to a tech whose docs don\'t cover the work. Recruit new techs in <a href="radar.html" style="color:var(--hazard)">Radar</a>.</div>'+
+  return '<div class="note">Dispatch guard is live: jobs physically can\'t be assigned to a tech whose docs don\'t cover the work. Hire a tech you already know with <strong>+ Hire Tech</strong>, or source new ones in <a href="radar.html" style="color:var(--hazard)">Radar</a>.</div>'+
    (T.length?T.map(t=>{
      const gateOk=!!t.is_active&&t.coi_expires_on&&t.coi_expires_on>=new Date().toISOString().slice(0,10);
      const licOk=gateOk&&t.dps_license_number&&t.tops_verified_on&&
@@ -387,7 +387,8 @@ function rTechs(){
       ' · licensed '+(licOk?'<span class="ok">✓</span>':'<span class="no">✗</span>')+'</span></div>'+
       '<div class="meta">'+(t.phone?'<a href="tel:'+esc(t.phone)+'" onclick="event.stopPropagation()">'+esc(t.phone)+'</a> · ':'')+
       esc((t.trades||[]).join(', '))+(t.company&&t.company!==t.name?' · '+esc(t.company):'')+'</div></div>'})
-    .join(''):'<div class="empty">No techs yet — open Radar → Techs and start recruiting.</div>');
+    .join(''):'<div class="empty">No techs yet — tap <strong>+ Hire Tech</strong> to add one.</div>')+
+   '<button class="b go fab" onclick="openTech()">+ Hire Tech</button>';
 }
 function rPlaybook(){
   const bounty=+(SET.commission_bounty_usd||40), pct=+(SET.commission_percent||20);
@@ -775,10 +776,12 @@ async function advJob(id,st){
 }
 function openTech(id){
   if(!isOwner())return;
-  const t=T.find(x=>x.id===id); if(!t)return;
+  const isNew=!id;
+  const t=isNew?{is_active:true,trades:['gate']}:T.find(x=>x.id===id); if(!t)return;
   const trades=t.trades||[];
-  openDrawer(dh(esc(t.name))+
-   '<div class="row"><div><label>Name</label><input id="t_n" value="'+esc(t.name)+'"></div>'+
+  openDrawer(dh(isNew?'Hire a Tech':esc(t.name))+
+   (isNew?'<div class="note">Enter the tech\'s info. Once they\'re <strong>Active</strong> with current GL insurance on file, you can assign dispatches to them. Gate/keypad work also needs a DPS license verified in TOPS within 90 days.</div>':'')+
+   '<div class="row"><div><label>Name</label><input id="t_n" value="'+esc(t.name||'')+'"></div>'+
    '<div><label>Company</label><input id="t_c" value="'+esc(t.company||'')+'"></div>'+
    '<div><label>Phone</label><input id="t_p" value="'+esc(t.phone||'')+'"></div></div>'+
    '<label>Trades</label><div class="row">'+['gate','access_control','camera'].map(x=>
@@ -792,17 +795,20 @@ function openTech(id){
    '<a class="b" target="_blank" href="https://tops.portal.texas.gov/psp-self-service/search/index">Open TOPS ↗</a></div>'+
    '<label style="margin-top:6px"><input type="checkbox" id="t_act" style="width:auto" '+(t.is_active?'checked':'')+'> Active (dispatchable)</label>'+
    '<label>Notes</label><textarea id="t_no" rows="2">'+esc(t.notes||'')+'</textarea>'+
-   '<button class="b go" onclick="saveTech(\''+id+'\')">Save</button>');
+   '<button class="b go" onclick="saveTech('+(isNew?'':'\''+id+'\'')+')">'+(isNew?'Hire Tech':'Save')+'</button>');
 }
 async function saveTech(id){
   if(!isOwner())return;
   const trades=Array.from(document.querySelectorAll('.t_tr:checked')).map(x=>x.value);
-  const {error}=await sb.from('techs').update({name:$('t_n').value,company:$('t_c').value||null,phone:$('t_p').value||null,
-   trades,coi_expires_on:$('t_coi').value||null,dps_license_number:$('t_dps').value||null,
+  const name=$('t_n').value.trim();
+  if(!name){toast('Tech name is required');return}
+  const row={name,company:$('t_c').value.trim()||null,phone:$('t_p').value.trim()||null,
+   trades,coi_expires_on:$('t_coi').value||null,dps_license_number:$('t_dps').value.trim()||null,
    dps_license_expires_on:$('t_dpx').value||null,tops_verified_on:$('t_tv').value||null,
-   agreement_signed_on:$('t_ag').value||null,is_active:$('t_act').checked,notes:$('t_no').value||null}).eq('id',id);
+   agreement_signed_on:$('t_ag').value||null,is_active:$('t_act').checked,notes:$('t_no').value||null};
+  const {error}=id?await sb.from('techs').update(row).eq('id',id):await sb.from('techs').insert(row);
   if(error){toast(error.message);return}
-  toast('Saved ✓');closeDrawer();refresh();
+  toast(id?'Saved ✓':'Tech hired ✓');closeDrawer();refresh();
 }
 async function dealLeads(uid,count){
   if(!isOwner())return;
