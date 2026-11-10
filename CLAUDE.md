@@ -40,3 +40,14 @@ See also the workspace master guide at [`../CLAUDE.md`](../CLAUDE.md).
 - Key: Google Places API (New). The function uses the `GOOGLE_MAPS_API_KEY` Edge Function secret if set, otherwise the Vault secret `google_maps_api_key` via the owner-only RPC `dhq_google_maps_key()` ([`20261102_google_maps_key_from_vault.sql`](./supabase/migrations/20261102_google_maps_key_from_vault.sql), applied). **Currently stored in Vault.** Rotate with `vault.update_secret`. Never commit the key or put it in the pages.
 - Called from Radar → Facility Leads (`runSweep()`); body `{ cities?, dry_run?, max_calls? }` (cities must be from `DEFAULT_CITIES`; `max_calls` default 150, max 300).
 - Migration [`20261102_lead_sweeps.sql`](./supabase/migrations/20261102_lead_sweeps.sql) is **applied** (as `lead_sweeps`).
+
+## 5. Security Hardening (Nov 2026 audit) — **NOT YET APPLIED**
+[`supabase/migrations/20261110_security_hardening.sql`](./supabase/migrations/20261110_security_hardening.sql) is written and tested against a local Postgres, but **not applied** to the live project. Apply as `security_hardening`, then update this section. It adds:
+1. `trg_dispatch_staff_signup_guard`: self-signup rows are forced to `pending`, `is_primary = false`, `jobs_scope = 'assigned'`, no onboarding dates, and the account's real email.
+2. `trg_rep_candidate_submit_guard`: public audition rows get `notes` cleared, `score` clamped 0–100, and only `auditions/…` paths or `https://` links.
+3. `dispatches_insert`: reps can only open dispatches on facilities assigned to / closed by them.
+4. `anon` loses table grants on Dispatch HQ tables (keeps `INSERT` on `rep_candidates`).
+
+Also from the audit:
+- The pages load `@supabase/supabase-js` **pinned to an exact version with an SRI hash**. To upgrade, change the version in all three pages and recompute the hash from `dist/umd/supabase.js` (not the auto-minified file).
+- `lead-sweep` (`clampMaxCalls`, stricter body validation) changed in the repo and needs a **redeploy** to take effect.

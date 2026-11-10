@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Radar — Texas Gate Dispatch</title>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.js" integrity="sha384-uteMfOloLDGt042uDz+xHGF3ym63/WQ6rFq7murQRG8Ih7QrXGEGNtWd8688sb4O" crossorigin="anonymous"></script>
 <style>
   :root{--bg:#141414;--panel:#1d1d1d;--line:#2c2c2c;--orange:#ff6a00;--hazard:#ffc400;
         --dim:#9a9a9a;--bright:#f2f2f2;--good:#2ecc71;--warm:#ffb03a;--danger:#ff5555;}
@@ -141,7 +141,7 @@
     <div class="counts" id="counts"></div>
     <div id="list"></div>
     <div class="note" id="sweepnote">
-      New facility &amp; tech candidates are found by automated sweep (`python3 agents/recruiting_swarm.py`).
+      New facility leads come from <strong>Run Sweep</strong> above (the <code>lead-sweep</code> Edge Function).
       1099 Sales Rep candidates flow in automatically from <strong>audition.html</strong> or via the Recruiting Swarm CLI.
     </div>
   </div>
@@ -254,7 +254,7 @@ Audition & interactive commission calculator:</div>
 <script>
 let sb=null, tab='leads', rows=[], repFilter='active', dbMissingRepTable=false;
 const $=id=>document.getElementById(id);
-const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 function openModal(id){$(id).classList.add('open');}
@@ -283,15 +283,15 @@ function copyAd(boxId){
 }
 
 async function verifyOwnerAndLoad(){
-  try{
-    const {data:roleData,error:roleErr}=await sb.rpc('dhq_role');
-    if(!roleErr && roleData && roleData!=='owner'){
-      $('login').style.display='none';
-      $('app').style.display='none';
-      $('denied').style.display='block';
-      return;
-    }
-  }catch(_e){}
+  // Fail closed: only a confirmed owner sees the console (the data itself is protected by RLS either way).
+  let role=null;
+  try{const {data,error}=await sb.rpc('dhq_role'); if(!error)role=data;}catch(_e){}
+  if(role!=='owner'){
+    $('login').style.display='none';
+    $('app').style.display='none';
+    $('denied').style.display='block';
+    return;
+  }
   $('login').style.display='none';
   $('denied').style.display='none';
   $('app').style.display='block';
@@ -467,9 +467,12 @@ function renderReps(){
     let audioHtml='';
     if(r.voice_sample_url){
       audioHtml='<div class="audio-box"><div class="lbl">🎙 60-Second Storage Manager Voice Audition</div>'+
-        (/^(https?:|data:)/i.test(r.voice_sample_url)
-          ?'<audio controls preload="none" src="'+esc(r.voice_sample_url)+'"></audio></div>'
-          :'<audio controls preload="none" data-audition="'+esc(r.voice_sample_url)+'"></audio></div>');
+        // Applicant-supplied links are shown as links, never auto-loaded as media in the owner's session.
+        (/^https:\/\//i.test(r.voice_sample_url)
+          ?'<a style="color:var(--hazard)" href="'+esc(r.voice_sample_url)+'" target="_blank" rel="noopener noreferrer">Open applicant\'s recording link ↗</a><div style="color:var(--dim);font-size:11.5px;margin-top:4px;word-break:break-all">'+esc(r.voice_sample_url)+'</div></div>'
+          :(/^auditions\/[A-Za-z0-9._-]+$/.test(r.voice_sample_url)
+            ?'<audio controls preload="none" data-audition="'+esc(r.voice_sample_url)+'"></audio></div>'
+            :'<div style="color:var(--dim);font-size:12px">Unrecognised recording reference — ask the applicant to re-submit.</div></div>'));
     }else{
       audioHtml='<div class="audio-box" style="border-style:dashed"><div class="lbl" style="color:var(--dim)">No voice sample recorded yet — send audition link below</div></div>';
     }
@@ -510,7 +513,7 @@ async function approveRep(id,channel){
     window.open('sms:'+r.phone.replace(/[^0-9+]/g,'')+'?&body='+encodeURIComponent(msg),'_blank');
   }else if(r.email){
     const subj='Approved: Texas Gate Dispatch 1099 Rep Console + First 25 Leads';
-    window.open('mailto:'+r.email+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(msg),'_blank');
+    window.open('mailto:'+encodeURIComponent(r.email)+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(msg),'_blank');
   }else{
     navigator.clipboard.writeText(msg);
     toast('Approved! Onboarding invite copied to clipboard ✓');

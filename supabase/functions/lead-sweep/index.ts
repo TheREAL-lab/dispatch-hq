@@ -5,7 +5,7 @@
 // Body: { cities?: string[], dry_run?: boolean, max_calls?: number }
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { nameCityKey, normPhone, processPlaces, resolveCities, searchCities } from "./sweep.ts";
+import { clampMaxCalls, nameCityKey, normPhone, processPlaces, resolveCities, searchCities } from "./sweep.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -46,11 +46,12 @@ Deno.serve(async (req) => {
   }
 
   let body: { cities?: string[]; dry_run?: boolean; max_calls?: number } = {};
-  try { body = await req.json(); } catch { /* empty body = full sweep */ }
+  try { body = (await req.json()) ?? {}; } catch { /* empty body = full sweep */ }
+  if (typeof body !== "object" || Array.isArray(body)) return json(400, { error: "Body must be a JSON object." });
   let cities;
   try { cities = resolveCities(body.cities); } catch (e) { return json(400, { error: (e as Error).message }); }
   const dryRun = !!body.dry_run;
-  const maxCalls = Math.max(1, Math.min(300, Math.floor(body.max_calls ?? 150)));
+  const maxCalls = clampMaxCalls(body.max_calls);
 
   const { data: logRow } = await sb.from("lead_sweeps")
     .insert({ cities: cities.map((c) => c.name), dry_run: dryRun }).select("id").single();

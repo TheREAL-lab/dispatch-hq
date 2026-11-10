@@ -1,7 +1,7 @@
 // Run: node --test supabase/functions/lead-sweep/sweep.test.ts   (Node 22.18+)
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { brandKey, findPain, processPlaces, resolveCities, searchCities, type Place } from "./sweep.ts";
+import { brandKey, clampMaxCalls, findPain, processPlaces, resolveCities, searchCities, type Place } from "./sweep.ts";
 
 const NOW = new Date("2026-11-01T12:00:00Z");
 const daysAgo = (d: number) => new Date(NOW.getTime() - d * 864e5).toISOString();
@@ -126,4 +126,25 @@ test("a rejected key stops the whole sweep after the first failure", async () =>
 
 test("unknown city names are rejected with the known list", () => {
   assert.throws(() => resolveCities(["Atlantis"]), /Unknown city "Atlantis"/);
+});
+
+test("max_calls is clamped to 1..300 and never becomes NaN", () => {
+  assert.equal(clampMaxCalls(undefined), 150);
+  assert.equal(clampMaxCalls(null), 150);
+  assert.equal(clampMaxCalls("abc"), 150);
+  assert.equal(clampMaxCalls({}), 150);
+  assert.equal(clampMaxCalls(NaN), 150);
+  assert.equal(clampMaxCalls("40"), 40);
+  assert.equal(clampMaxCalls(12.9), 12);
+  assert.equal(clampMaxCalls(0), 1);
+  assert.equal(clampMaxCalls(-5), 1);
+  assert.equal(clampMaxCalls(1e9), 300);
+  assert.equal(clampMaxCalls(Infinity), 150);
+});
+
+test("cities must be a list of strings", () => {
+  assert.throws(() => resolveCities("Plano"), /list of city names/);
+  assert.throws(() => resolveCities([42]), /list of city names/);
+  assert.equal(resolveCities(null).length, resolveCities().length);
+  assert.equal(resolveCities([" plano "])[0].name, "Plano");
 });
