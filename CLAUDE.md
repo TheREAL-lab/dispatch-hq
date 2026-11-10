@@ -41,13 +41,25 @@ See also the workspace master guide at [`../CLAUDE.md`](../CLAUDE.md).
 - Called from Radar → Facility Leads (`runSweep()`); body `{ cities?, dry_run?, max_calls? }` (cities must be from `DEFAULT_CITIES`; `max_calls` default 150, max 300).
 - Migration [`20261102_lead_sweeps.sql`](./supabase/migrations/20261102_lead_sweeps.sql) is **applied** (as `lead_sweeps`).
 
-## 5. Security Hardening (Nov 2026 audit) — **NOT YET APPLIED**
-[`supabase/migrations/20261110_security_hardening.sql`](./supabase/migrations/20261110_security_hardening.sql) is written and tested against a local Postgres, but **not applied** to the live project. Apply as `security_hardening`, then update this section. It adds:
+## 5. Security Hardening (Nov 2026 audit) — migrations **NOT YET APPLIED**
+Two migrations are written and tested against a local replica of the live schema, but **not applied** (the apply request needs the owner's confirmation). Apply in this order, then redeploy `lead-sweep`, then update this section:
+
+[`20261110_security_hardening.sql`](./supabase/migrations/20261110_security_hardening.sql) → apply as `security_hardening`:
 1. `trg_dispatch_staff_signup_guard`: self-signup rows are forced to `pending`, `is_primary = false`, `jobs_scope = 'assigned'`, no onboarding dates, and the account's real email.
 2. `trg_rep_candidate_submit_guard`: public audition rows get `notes` cleared, `score` clamped 0–100, and only `auditions/…` paths or `https://` links.
 3. `dispatches_insert`: reps can only open dispatches on facilities assigned to / closed by them.
 4. `anon` loses table grants on Dispatch HQ tables (keeps `INSERT` on `rep_candidates`).
 
+[`20261111_audit_followups.sql`](./supabase/migrations/20261111_audit_followups.sql) → apply as `audit_followups` (always after the one above; re-running `20261110` afterwards would undo its rate limits):
+1. **Enrollment verification:** `facilities.vof_verified_at` / `vof_verified_by` (owner-only). `rep_commissions` and `rep_vof_milestones` only count verified facilities. Already-credited enrollments are backfilled as verified. Owner verifies in the facility drawer; Pipeline → **Unverified** lists what's waiting. DOC 05 §3 carries the matching clause.
+2. **Rep column limits:** `fn_facility_rep_attribution` lets reps change only `call_status`, `priority`, `follow_up_date`, `contact_name`, `current_vendor`, `pain_points`, `notes` (plus claiming an unassigned lead).
+3. **Maps key:** `dhq_google_maps_key()` is `service_role`-only. `lead-sweep` verifies the caller is the owner, then reads the key with its service-role client. **Deploy the function right after this migration** — the currently deployed version reads the key as the owner and will report "key not set" in between.
+4. **Audition rate limits:** `rep_candidates.submit_ip_hash`; 5/hour per IP, 3/day per email or phone, 40/hour overall; `dhq_audition_upload_ok()` caps recordings at 40/hour.
+5. **RLS:** policies wrap `auth.uid()` / `dhq_*()` in `(select …)` so they run once per statement.
+6. `app_settings.sweep_monthly_call_cap` (default 1000; editable in Settings). `lead-sweep` refuses to exceed it and refuses overlapping runs.
+
 Also from the audit:
 - The pages load `@supabase/supabase-js` **pinned to an exact version with an SRI hash**. To upgrade, change the version in all three pages and recompute the hash from `dist/umd/supabase.js` (not the auto-minified file).
-- `lead-sweep` (`clampMaxCalls`, stricter body validation) changed in the repo and needs a **redeploy** to take effect.
+- **Data loading:** `index.html` pages past PostgREST's 1000-row limit (`fetchAll`), loads per-dataset (`LOADERS` / `reload('F','COMM',…)`), and patches rows returned by writes instead of reloading everything. Outreach is a 7-day window (`O7`) plus an exact count (`O_TOTAL`); facility history loads when the drawer opens. Radar pages candidates 50 at a time.
+- **Invoice (DOC 03):** details are passed from Dispatch HQ via `localStorage.dhq_invoice`, never the URL.
+- Still manual: turn on **Leaked password protection** in Supabase → Authentication → Sign In / Providers → Password.

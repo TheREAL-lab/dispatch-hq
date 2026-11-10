@@ -315,6 +315,28 @@ export function clampMaxCalls(v: unknown, dflt = 150, max = 300): number {
   return Math.max(1, Math.min(max, Math.floor(Number.isFinite(n) ? n : dflt)));
 }
 
+// How many Google calls this run may make, given what has already been spent this month.
+// A missing or invalid cap falls back to the default; 0 remaining means "do not run".
+export const DEFAULT_MONTHLY_CALL_CAP = 1000;
+export function monthlyBudget(requested: number, usedThisMonth: number, cap: unknown) {
+  const c = typeof cap === "string" && cap.trim() ? Number(cap) : typeof cap === "number" ? cap : NaN;
+  const monthlyCap = Number.isFinite(c) && c >= 0 ? Math.floor(c) : DEFAULT_MONTHLY_CALL_CAP;
+  const used = Number.isFinite(usedThisMonth) && usedThisMonth > 0 ? Math.floor(usedThisMonth) : 0;
+  const remaining = Math.max(0, monthlyCap - used);
+  return { monthlyCap, used, remaining, allowed: Math.min(requested, remaining) };
+}
+
+// PostgREST returns at most 1000 rows per request; page through until a short page.
+export async function fetchAllRows<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>, size = 1000): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += size) {
+    const { data, error } = await page(from, from + size - 1);
+    if (error) throw new Error(error.message);
+    out.push(...(data || []));
+    if (!data || data.length < size) return out;
+  }
+}
+
 export function resolveCities(names?: unknown): City[] {
   if (names === undefined || names === null) return DEFAULT_CITIES;
   if (!Array.isArray(names) || names.some((n) => typeof n !== "string")) throw new Error("cities must be a list of city names");

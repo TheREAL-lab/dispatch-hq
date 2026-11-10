@@ -144,11 +144,15 @@ table.t th{color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spa
 <script>
 const SB_URL='https://teptzyvzuenolwtfosht.supabase.co', SB_KEY='sb_publishable_4LgHf6k24QMus_1nvHPgSg__3rjqh52';
 let sb, me={role:null,uid:null,email:null,name:null,scope:'all'}, view='command', signup=false;
-let F=[], T=[], D=[], O=[], STAFF=[], COMM=[], MILE=[], BAL=[], PAY=[], TECH_READY=true, SET={}, FEE=89, FEE_RUSH=149, pipeFilter='queue', pipeSearch='', jobFilter='active';
+let F=[], T=[], D=[], O7=[], O_TOTAL=0, STAFF=[], COMM=[], MILE=[], BAL=[], PAY=[], TECH_READY=true, SET={}, FEE=89, FEE_RUSH=149, pipeFilter='queue', pipeSearch='', jobFilter='active';
 let calcEnroll=12, calcMulti=2;
 const isOwner=()=>me.role==='owner';
 const myLeads=()=>isOwner()?F:F.filter(f=>f.assigned_to===me.uid||f.closed_by===me.uid);
 const myOwnedLeads=()=>F.filter(f=>f.assigned_to===me.uid||f.closed_by===me.uid);
+// Enrolled and credited to a rep, but not yet confirmed by the owner (no commission / VOF credit until it is).
+const unverified=f=>!!(f.vendor_on_file&&f.closed_by&&!f.vof_verified_at);
+// Replace a row in a loaded list (or add it) after a write, instead of re-downloading the whole table.
+const patch=(arr,row,key='id')=>{const i=arr.findIndex(x=>x[key]===row[key]);if(i>=0)arr[i]=row;else arr.unshift(row)};
 const onboarded=s=>!!(s&&(s.is_primary||s.role==='owner'||(s.agreement_signed_at&&s.w9_received_at)));
 const money=n=>'$'+(+n||0).toFixed(2);
 const repName=uid=>{const s=STAFF.find(x=>x.user_id===uid);return s?(s.full_name||s.email.split('@')[0]):'rep'};
@@ -172,7 +176,7 @@ function show(id){['login','pending','app'].forEach(x=>$(x).style.display=x===id
 async function gate(session){
   me.uid=session.user.id; me.email=session.user.email;
   me.name=(session.user.email||'').split('@')[0];
-  let {data:role}=await sb.rpc('dhq_role');
+  const [{data:role},{data:scope}]=await Promise.all([sb.rpc('dhq_role'),sb.rpc('dhq_jobs_scope')]);
   if(!role){
     // No staff row yet (e.g. the account was created before the email was confirmed, when there was
     // no session to insert with). Create the pending row now so the owner sees this person in Team.
@@ -181,7 +185,7 @@ async function gate(session){
   }
   if(!role||role==='pending'){show('pending');return}
   me.role=role;
-  const {data:scope}=await sb.rpc('dhq_jobs_scope'); me.scope=scope||(role==='owner'?'all':'assigned');
+  me.scope=scope||(role==='owner'?'all':'assigned');
   const badge=role==='owner'?'OWNER':'1099 SALES REP';
   $('who').innerHTML=esc(me.email)+' · <strong style="color:var(--orange)">'+badge+'</strong> · <a href="#" onclick="signOut();return false">sign out</a>';
   show('app'); buildNav(); await loadAll(); render();
@@ -226,40 +230,48 @@ function go(v){
   view=v;markNav();render();
 }
 
-async function loadAll(){
-  const q=[
-    sb.from('facilities').select('*'),
-    sb.from('dispatches').select('*').order('created_at',{ascending:false}),
-    sb.from('outreach_log').select('*').order('contacted_at',{ascending:false}).limit(500),
-    sb.from('app_settings').select('*'),
-    sb.from('rep_commissions').select('*'),
-    sb.from('rep_vof_milestones').select('*'),
-    sb.from('rep_payout_balance').select('*'),
-    sb.from('rep_payouts').select('*').order('paid_on',{ascending:false}),
-    sb.rpc('dhq_dispatch_ready')
-  ];
-  if(isOwner()){
-    q.push(sb.from('techs').select('*'));
-    q.push(sb.from('dispatch_staff').select('*'));
-  }
-  const r=await Promise.all(q);
-  F=r[0].data||[]; D=r[1].data||[]; O=r[2].data||[];
-  SET={};(r[3].data||[]).forEach(s=>SET[s.key]=s.value);
-  FEE=parseFloat(SET.booking_fee_usd||'89');
-  FEE_RUSH=parseFloat(SET.emergency_fee_usd||'149');
-  COMM=r[4].data||[];
-  MILE=r[5].data||[];
-  BAL=r[6].data||[]; PAY=r[7].data||[];
-  TECH_READY=r[8].error?true:!!r[8].data;
-  if(isOwner()){
-    T=r[9].data||[];
-    STAFF=r[10].data||[];
-    const meStaff=STAFF.find(s=>s.user_id===me.uid);
-    if(meStaff&&meStaff.full_name)me.name=meStaff.full_name;
-  }else{
-    T=[]; STAFF=[];
+// PostgREST returns at most 1000 rows per request, so page until a short page comes back.
+async function fetchAll(build,size=1000){
+  const out=[];
+  for(let from=0;;from+=size){
+    const {data,error}=await build().range(from,from+size-1);
+    if(error){console.error(error);toast('Load error: '+error.message);return out}
+    out.push(...(data||[]));
+    if(!data||data.length<size)return out;
   }
 }
+// One loader per dataset so a write only re-fetches what it can actually change.
+const LOADERS={
+  F:async()=>{F=await fetchAll(()=>sb.from('facilities').select('*').order('id'))},
+  D:async()=>{D=await fetchAll(()=>sb.from('dispatches').select('*').order('created_at',{ascending:false}).order('id'))},
+  // Last 7 days of touches (light columns) for the call KPIs, plus an exact all-time count.
+  O:async()=>{
+    const since=new Date(Date.now()-7*864e5).toISOString();
+    const [rows,tot]=await Promise.all([
+      fetchAll(()=>sb.from('outreach_log').select('id,facility_id,rep_id,contacted_at').gte('contacted_at',since).order('contacted_at',{ascending:false}).order('id')),
+      sb.from('outreach_log').select('id',{count:'exact',head:true})]);
+    O7=rows; O_TOTAL=tot.count||0;
+  },
+  SET:async()=>{
+    const {data}=await sb.from('app_settings').select('*');
+    SET={};(data||[]).forEach(x=>SET[x.key]=x.value);
+    FEE=parseFloat(SET.booking_fee_usd||'89');
+    FEE_RUSH=parseFloat(SET.emergency_fee_usd||'149');
+  },
+  COMM:async()=>{COMM=await fetchAll(()=>sb.from('rep_commissions').select('*').order('dispatch_id'))},
+  MILE:async()=>{MILE=(await sb.from('rep_vof_milestones').select('*')).data||[]},
+  BAL:async()=>{BAL=(await sb.from('rep_payout_balance').select('*')).data||[]},
+  PAY:async()=>{PAY=await fetchAll(()=>sb.from('rep_payouts').select('*').order('paid_on',{ascending:false}).order('id'))},
+  READY:async()=>{const r=await sb.rpc('dhq_dispatch_ready');TECH_READY=r.error?true:!!r.data},
+  T:async()=>{T=isOwner()?((await sb.from('techs').select('*')).data||[]):[]},
+  STAFF:async()=>{
+    STAFF=isOwner()?((await sb.from('dispatch_staff').select('*')).data||[]):[];
+    const meStaff=STAFF.find(x=>x.user_id===me.uid);
+    if(meStaff&&meStaff.full_name)me.name=meStaff.full_name;
+  }
+};
+async function reload(...keys){await Promise.all(keys.map(k=>LOADERS[k]()))}
+async function loadAll(){await reload(...Object.keys(LOADERS))}
 async function refresh(){await loadAll();render()}
 const fac=id=>F.find(f=>f.id===id)||{}; const tech=id=>T.find(t=>t.id===id)||{};
 
@@ -278,13 +290,13 @@ function render(){
 function kpis(){
   const today=localDay();
   if(isOwner()){
-    const callsToday=O.filter(o=>o.contacted_at&&localDay(o.contacted_at)===today).length;
+    const callsToday=O7.filter(o=>o.contacted_at&&localDay(o.contacted_at)===today).length;
     const convos=F.filter(f=>CONVO.includes(f.call_status)).length;
     const active=D.filter(d=>!['approved','cancelled'].includes(d.status)).length;
     const earned=D.filter(d=>d.status==='approved').reduce((s,d)=>s+(+d.coordination_fee_usd||0),0);
     return {callsToday,convos,active,earned};
   }
-  const callsToday=O.filter(o=>o.contacted_at&&localDay(o.contacted_at)===today&&o.rep_id===me.uid).length;
+  const callsToday=O7.filter(o=>o.contacted_at&&localDay(o.contacted_at)===today&&o.rep_id===me.uid).length;
   const convos=myOwnedLeads().filter(f=>CONVO.includes(f.call_status)).length;
   const enrolled=myOwnedLeads().filter(f=>['vendor_on_file','client'].includes(f.call_status)).length;
   const myComm=COMM.filter(c=>c.rep_id===me.uid||!c.rep_id).reduce((s,c)=>s+(+c.bounty_usd||0)+(+c.trail_usd||0),0)+mileBonusFor(me.uid);
@@ -313,7 +325,9 @@ function rCommand(){
   const capacity=TECH_READY?'':(isOwner()?
     '<div class="note" style="border-color:var(--red,#e5484d)"><strong>No dispatchable techs.</strong> No active tech has current insurance on file. Facilities your reps enroll can\'t be served (and reps can\'t earn) until you activate at least one in <a href="#" onclick="go(\'techs\');return false" style="color:var(--hazard)">Techs</a>.</div>':
     '<div class="note"><strong>Heads up:</strong> the tech bench is being staffed. Keep enrolling facilities as Vendor-on-File; if one has a gate down right now, submit the dispatch and Operations will confirm timing with them.</div>');
-  return topBar+capacity+
+  const nUnv=isOwner()?F.filter(unverified).length:0;
+  const verifyNote=nUnv?'<div class="note"><strong>'+nUnv+' enrollment'+(nUnv===1?'':'s')+' awaiting your verification.</strong> Reps earn no commission or Fast-Start credit on a facility until you confirm it. <a href="#" onclick="pipeFilter=\'unverified\';go(\'pipeline\');return false" style="color:var(--hazard)">Review them →</a></div>':'';
+  return topBar+capacity+verifyNote+
     '<h2 class="sec">Priority Call Queue ('+due.length+')</h2>'+
     (due.length?due.map(cardFac).join(''):'<div class="empty">Queue clear! Ask owner for a fresh lead batch or check Pipeline.</div>')+
     '<h2 class="sec">Active Dispatches</h2>'+
@@ -328,6 +342,7 @@ function cardFac(f){
    (isOwner()&&f.assigned_to?'<span class="st">'+esc(repName(f.assigned_to))+'</span>':'')+
    (!isOwner()&&f.assigned_to===me.uid?'<span class="st" style="border-color:var(--orange);color:var(--orange)">MINE</span>':'')+
    (f.operator_group?'<span class="st">🏢 '+esc(f.operator_group)+'</span>':'')+
+   (unverified(f)?'<span class="st" style="border-color:var(--hazard);color:var(--hazard)">'+(isOwner()?'UNVERIFIED':'PENDING VERIFY')+'</span>':'')+
    '<span class="rt'+statusCls+'">'+(f.follow_up_date?('follow up '+fmt(f.follow_up_date)):esc(f.call_status.replace(/_/g,' ')))+'</span></div>'+
    '<div class="meta">'+(f.phone?'<a href="tel:'+esc(f.phone)+'" onclick="event.stopPropagation()">📞 '+esc(f.phone)+'</a> · ':'')+
    esc(f.city||'')+(f.contact_name?' · Ask for: <strong>'+esc(f.contact_name)+'</strong>':'')+
@@ -341,36 +356,29 @@ function cardJob(d){
    '<span class="rt">$'+(+d.coordination_fee_usd||0).toFixed(0)+(d.fee_collected?' ✓':'')+'</span></div>'+
    '<div class="meta">'+esc(d.equipment_kind.replace('_',' '))+' · '+esc(tLabel)+(d.issue?' · '+esc(d.issue.slice(0,60)):'')+'</div></div>';
 }
+const PIPE_LBL={queue:'Queue',mine:'Mine',unverified:'Unverified',not_called:'Not called',no_answer:'No answer',spoke:'Spoke',vendor_on_file:'Vendor on file',declined:'Declined',client:'CLIENT'};
+function pipeMatch(g){
+  if(g==='queue')return f=>['not_called','no_answer'].includes(f.call_status);
+  if(g==='mine')return f=>f.assigned_to===me.uid||f.closed_by===me.uid;
+  if(g==='unverified')return unverified;
+  return f=>f.call_status===g;
+}
+function pipeList(){
+  let list=myLeads().filter(pipeMatch(pipeFilter));
+  const q=pipeSearch.trim().toLowerCase();
+  if(q)list=list.filter(f=>(f.name+' '+(f.city||'')+' '+(f.contact_name||'')+' '+(f.pain_points||'')+' '+(f.operator_group||'')).toLowerCase().includes(q));
+  list.sort((a,b)=>PRI_ORD[a.priority]-PRI_ORD[b.priority]||a.name.localeCompare(b.name));
+  return list.length?list.map(cardFac).join(''):'<div class="empty">Nothing matches.</div>';
+}
 function rPipeline(){
-  const groups=['queue','mine','not_called','no_answer','spoke','vendor_on_file','declined','client'];
-  const lbl={queue:'Queue',mine:'Mine',not_called:'Not called',no_answer:'No answer',spoke:'Spoke',vendor_on_file:'Vendor on file',declined:'Declined',client:'CLIENT'};
+  const groups=['queue','mine','unverified','not_called','no_answer','spoke','vendor_on_file','declined','client'];
   const B=myLeads();
-  let list=B.slice();
-  if(pipeFilter==='queue')list=list.filter(f=>['not_called','no_answer'].includes(f.call_status));
-  else if(pipeFilter==='mine')list=list.filter(f=>f.assigned_to===me.uid||f.closed_by===me.uid);
-  else list=list.filter(f=>f.call_status===pipeFilter);
-  const q=pipeSearch.trim().toLowerCase();
-  if(q)list=list.filter(f=>(f.name+' '+(f.city||'')+' '+(f.contact_name||'')+' '+(f.pain_points||'')+' '+(f.operator_group||'')).toLowerCase().includes(q));
-  list.sort((a,b)=>PRI_ORD[a.priority]-PRI_ORD[b.priority]||a.name.localeCompare(b.name));
   return '<div style="margin-top:10px"><input id="pipeQ" type="search" placeholder="Search facility, city, manager, or pain point…" value="'+esc(pipeSearch)+'" oninput="pipeSearch=this.value;renderPipelineList()"></div>'+
-    '<div class="chips">'+groups.map(g=>{
-    const n=g==='queue'?B.filter(f=>['not_called','no_answer'].includes(f.call_status)).length:
-      g==='mine'?B.filter(f=>f.assigned_to===me.uid||f.closed_by===me.uid).length:B.filter(f=>f.call_status===g).length;
-    return '<button class="'+(pipeFilter===g?'on':'')+'" onclick="pipeFilter=\''+g+'\';render()">'+lbl[g]+' '+n+'</button>'}).join('')+'</div>'+
-    '<div id="pipeList">'+(list.length?list.map(cardFac).join(''):'<div class="empty">Nothing matches.</div>')+'</div>';
+    '<div class="chips">'+groups.map(g=>
+      '<button class="'+(pipeFilter===g?'on':'')+'" onclick="pipeFilter=\''+g+'\';render()">'+PIPE_LBL[g]+' '+B.filter(pipeMatch(g)).length+'</button>').join('')+'</div>'+
+    '<div id="pipeList">'+pipeList()+'</div>';
 }
-function renderPipelineList(){
-  const B=myLeads();
-  let list=B.slice();
-  if(pipeFilter==='queue')list=list.filter(f=>['not_called','no_answer'].includes(f.call_status));
-  else if(pipeFilter==='mine')list=list.filter(f=>f.assigned_to===me.uid||f.closed_by===me.uid);
-  else list=list.filter(f=>f.call_status===pipeFilter);
-  const q=pipeSearch.trim().toLowerCase();
-  if(q)list=list.filter(f=>(f.name+' '+(f.city||'')+' '+(f.contact_name||'')+' '+(f.pain_points||'')+' '+(f.operator_group||'')).toLowerCase().includes(q));
-  list.sort((a,b)=>PRI_ORD[a.priority]-PRI_ORD[b.priority]||a.name.localeCompare(b.name));
-  const el=$('pipeList');
-  if(el)el.innerHTML=list.length?list.map(cardFac).join(''):'<div class="empty">Nothing matches.</div>';
-}
+function renderPipelineList(){const el=$('pipeList');if(el)el.innerHTML=pipeList()}
 function rJobs(){
   const filters=['active','requested','dispatched','on_site','completed','approved','cancelled','all'];
   const myFIds=new Set(myLeads().map(f=>f.id));
@@ -401,9 +409,7 @@ function rTechs(){
 function rPlaybook(){
   const bounty=+(SET.commission_bounty_usd||40), pct=+(SET.commission_percent||20);
   const trailStd=+(FEE*(pct/100)).toFixed(2), trailRush=+(FEE_RUSH*(pct/100)).toFixed(2);
-  const totalRoofs=calcEnroll+(calcMulti*3);
-  const estFirstBounties=Math.round(totalRoofs*0.55*(bounty+trailStd));
-  const estAnnualTrail=Math.round(totalRoofs*2.2*trailStd);
+  const c=calcNumbers();
   return '<div class="note"><strong>Your Goal on Every Call:</strong> Either (A) book an <strong>immediate dispatch</strong> if they have a broken gate/keypad right now, OR (B) get them to say <strong>"Yes, send me your Dispatch Card &amp; put us on file as our emergency backup"</strong> (`vendor_on_file`) and ask how many sister properties they manage.</div>'+
     '<h2 class="sec">30-Second Storage Facility Opener</h2>'+
     '<div class="scriptline">“Hey <strong>[Manager Name]</strong>, this is <strong>'+esc(me.name||'your rep')+'</strong> with <strong>Texas Gate Dispatch</strong> here in North DFW. We’re the commercial gate, keypad, and access-control dispatch desk for independent self-storage operators in <strong>[City]</strong>.<br><br>'+
@@ -418,17 +424,27 @@ function rPlaybook(){
     '<h2 class="sec">Multi-Property Commission Calculator</h2>'+
     '<div class="card" style="cursor:default">'+
       '<div class="row">'+
-        '<div><label>Single-Site Facilities Enrolled / Mo: <strong style="color:var(--orange)">'+calcEnroll+'</strong></label><input type="range" min="2" max="40" value="'+calcEnroll+'" oninput="calcEnroll=+this.value;render()"></div>'+
-        '<div><label>Multi-Site Regional Managers Landed (avg 4 roofs each): <strong style="color:var(--orange)">'+calcMulti+'</strong></label><input type="range" min="0" max="10" value="'+calcMulti+'" oninput="calcMulti=+this.value;render()"></div>'+
+        '<div><label>Single-Site Facilities Enrolled / Mo: <strong id="pb_e" style="color:var(--orange)">'+calcEnroll+'</strong></label><input type="range" min="2" max="40" value="'+calcEnroll+'" oninput="calcEnroll=+this.value;calcUpdate()"></div>'+
+        '<div><label>Multi-Site Regional Managers Landed (avg 4 roofs each): <strong id="pb_m" style="color:var(--orange)">'+calcMulti+'</strong></label><input type="range" min="0" max="10" value="'+calcMulti+'" oninput="calcMulti=+this.value;calcUpdate()"></div>'+
       '</div>'+
       '<div class="kpis" style="margin-top:6px">'+
-        '<div class="kpi"><div class="n">'+totalRoofs+'</div><div class="l">Total Facility Roofs Credited</div></div>'+
+        '<div class="kpi"><div class="n" id="pb_roofs">'+c.roofs+'</div><div class="l">Total Facility Roofs Credited</div></div>'+
         '<div class="kpi"><div class="n">$'+(bounty+trailStd).toFixed(2)+'</div><div class="l">1st Dispatch Payout ($'+bounty+' + '+pct+'%)</div></div>'+
-        '<div class="kpi"><div class="n">~$'+estFirstBounties+'</div><div class="l">Est. First-Fee Bounties</div></div>'+
-        '<div class="kpi"><div class="n">+$'+estAnnualTrail+'/yr</div><div class="l">Est. 12-Mo Residual Trail</div></div>'+
+        '<div class="kpi"><div class="n" id="pb_first">~$'+c.first+'</div><div class="l">Est. First-Fee Bounties</div></div>'+
+        '<div class="kpi"><div class="n" id="pb_trail">+$'+c.trail+'/yr</div><div class="l">Est. 12-Mo Residual Trail</div></div>'+
       '</div>'+
       '<div class="mut" style="margin-top:8px">Tip: Always ask <em>“Do you manage any sister properties in DFW?”</em> Closing 1 regional manager with 5 facilities credits all 5 rooftops to your commission ledger.</div>'+
     '</div>';
+}
+function calcNumbers(){
+  const bounty=+(SET.commission_bounty_usd||40), pct=+(SET.commission_percent||20);
+  const trailStd=+(FEE*(pct/100)).toFixed(2);
+  const roofs=calcEnroll+(calcMulti*4);   // matches the "avg 4 roofs each" label
+  return {roofs,first:Math.round(roofs*0.55*(bounty+trailStd)),trail:Math.round(roofs*2.2*trailStd)};
+}
+function calcUpdate(){
+  const c=calcNumbers(), set=(id,v)=>{const el=$(id);if(el)el.textContent=v};
+  set('pb_e',calcEnroll);set('pb_m',calcMulti);set('pb_roofs',c.roofs);set('pb_first','~$'+c.first);set('pb_trail','+$'+c.trail+'/yr');
 }
 function rMetrics(){
   if(!isOwner())return rCommissions();
@@ -439,7 +455,7 @@ function rMetrics(){
   const collected=D.filter(d=>d.fee_collected).reduce((s,d)=>s+(+d.coordination_fee_usd||0),0);
   return '<div class="kpis">'+
    '<div class="kpi"><div class="n">'+k.convos+'/20</div><div class="l">Kill-criteria conversations</div><div class="bar"><i style="width:'+Math.min(100,k.convos*5)+'%"></i></div></div>'+
-   '<div class="kpi"><div class="n">'+O.length+'</div><div class="l">Outreach touches</div></div>'+
+   '<div class="kpi"><div class="n">'+O_TOTAL+'</div><div class="l">Outreach touches</div></div>'+
    '<div class="kpi"><div class="n">'+F.filter(f=>f.call_status==='client').length+'</div><div class="l">Clients</div></div>'+
    '<div class="kpi"><div class="n">$'+collected.toFixed(0)+'</div><div class="l">Fees collected</div></div></div>'+
    '<h2 class="sec">Dispatch funnel</h2><table class="t"><tr><th>Status</th><th>Count</th></tr>'+
@@ -471,6 +487,7 @@ function rCommissions(){
        '<div class="bar" style="margin-top:8px"><i style="width:'+Math.min(100,(myMile.progress/mileTarget)*100)+'%"></i></div>'+
        '<div class="mut" style="margin-top:6px">Every '+mileTarget+' verified facilities where you log the decision-maker, current vendor, and send our Dispatch Terms unlocks a $'+mileBonus+' fast-start bonus on top of your $'+(SET.commission_bounty_usd||40)+' first-dispatch bounty + '+(SET.commission_percent||20)+'% 12-month trail.</div>'+
      '</div>'+
+     (myVof.filter(unverified).length?'<div class="note"><strong>'+myVof.filter(unverified).length+' enrollment(s) pending owner verification.</strong> Commission and Fast-Start credit start once the owner confirms the facility is on file.</div>':'')+
      rPayoutPanel()+
      '<div class="note">Paid monthly on the 10th for coordination fees actually collected: <strong>$'+(SET.commission_bounty_usd||40)+' first-fee bounty</strong> per facility + <strong>'+(SET.commission_percent||20)+'% trailing commission</strong> for '+(SET.commission_window_months||12)+' months. <a href="docs.html#wrap-d5" target="_blank" style="color:var(--hazard)">View Sales Rep Agreement (DOC 05) ↗</a></div>'+
      (myVof.length?'<h2 class="sec">My Enrolled Portfolio ('+myVof.length+')</h2>'+myVof.map(cardFac).join(''):'');
@@ -500,7 +517,7 @@ function rTeam(){
    (STAFF.length?'<table class="t"><tr><th>Name</th><th>Role</th><th>Onboarding</th><th>Leads</th><th>Calls 7d</th><th>Last active</th><th>Unpaid</th><th>Actions</th></tr>'+
    STAFF.map(s=>{
      const nLeads=F.filter(f=>f.assigned_to===s.user_id).length;
-     const calls7=O.filter(o=>o.rep_id===s.user_id&&new Date(o.contacted_at)>=wk).length;
+     const calls7=O7.filter(o=>o.rep_id===s.user_id&&new Date(o.contacted_at)>=wk).length;
      const bal=(BAL.find(b=>b.rep_id===s.user_id)||{}).balance_usd;
      const ok=onboarded(s);
      const chk=s.role==='employee'?
@@ -552,10 +569,9 @@ function openOnboard(uid){
 }
 async function saveOnboard(uid){
   const ts=v=>v?new Date(v+'T12:00:00').toISOString():null;
-  const {error}=await sb.from('dispatch_staff').update({agreement_signed_at:ts($('ob_ag').value),w9_received_at:ts($('ob_w9').value),
-    payout_method:$('ob_pm').value.trim()||null,phone:$('ob_ph').value.trim()||null}).eq('user_id',uid);
-  if(error){toast(error.message);return}
-  toast('Checklist saved ✓');closeDrawer();await loadAll();render();
+  if(!(await staffUpdate(uid,{agreement_signed_at:ts($('ob_ag').value),w9_received_at:ts($('ob_w9').value),
+    payout_method:$('ob_pm').value.trim()||null,phone:$('ob_ph').value.trim()||null})))return;
+  toast('Checklist saved ✓');closeDrawer();render();
 }
 function openPayout(uid){
   const s=STAFF.find(x=>x.user_id===uid)||{};
@@ -581,7 +597,7 @@ async function savePayout(uid){
     period_start:$('po_ps').value||null,period_end:$('po_pe').value||null,paid_on:$('po_on').value||undefined,
     method:$('po_m').value.trim()||null,reference:$('po_r').value.trim()||null});
   if(error){toast(error.message);return}
-  toast('Payout recorded ✓');closeDrawer();await loadAll();render();
+  toast('Payout recorded ✓');closeDrawer();await reload('PAY','BAL');render();
 }
 function rSettings(){
   if(!isOwner())return '';
@@ -589,7 +605,8 @@ function rSettings(){
    '<div><label>Standard Dispatch Fee ($)</label><input id="feeIn" type="number" value="'+FEE+'"></div>'+
    '<div><label>Same-Day Emergency Rush Fee ($)</label><input id="feeRushIn" type="number" value="'+FEE_RUSH+'"></div>'+
    '<div><label>Payment Link / Zelle Instructions</label><input id="payLinkIn" placeholder="e.g. Zelle to 469-400-1081 or Stripe URL" value="'+esc(SET.payment_instructions||'Zelle to 469-400-1081 (Taylor Keup)')+'"></div></div>'+
-   '<button class="b go" onclick="saveFee()">Save fee &amp; payment settings</button>'+
+   '<div class="row"><div><label>Monthly Google Maps Call Cap (lead sweeps)</label><input id="sweepCapIn" type="number" min="0" value="'+esc(SET.sweep_monthly_call_cap||1000)+'"></div></div>'+
+   '<button class="b go" onclick="saveFee()">Save fee, payment &amp; sweep settings</button>'+
    '<h2 class="sec">1099 Rep Commission Plan</h2><div class="row">'+
    '<div><label>1st-Dispatch Account Bounty ($)</label><input id="cB" type="number" value="'+(SET.commission_bounty_usd||40)+'"></div>'+
    '<div><label>Trailing Commission (%)</label><input id="cP" type="number" value="'+(SET.commission_percent||20)+'"></div>'+
@@ -615,8 +632,10 @@ function openFac(id){
     '<div class="row"><div><label>Assigned rep</label><select id="f_as"><option value="">— unassigned —</option>'+
     STAFF.filter(s=>s.role!=='pending').map(s=>'<option value="'+s.user_id+'" '+(f.assigned_to===s.user_id?'selected':'')+'>'+esc(s.full_name||s.email)+'</option>').join('')+'</select></div>'+
     '<div><label>Closed by (commission credit)</label><select id="f_cb"><option value="">— none yet —</option>'+
-    STAFF.filter(s=>s.role!=='pending').map(s=>'<option value="'+s.user_id+'" '+(f.closed_by===s.user_id?'selected':'')+'>'+esc(s.full_name||s.email)+'</option>').join('')+'</select></div></div>'
-  ):'';
+    STAFF.filter(s=>s.role!=='pending').map(s=>'<option value="'+s.user_id+'" '+(f.closed_by===s.user_id?'selected':'')+'>'+esc(s.full_name||s.email)+'</option>').join('')+'</select></div></div>'+
+    '<label style="margin:6px 0"><input type="checkbox" id="f_vf" style="width:auto" '+(f.vof_verified_at?'checked':'')+'> Enrollment verified — counts toward the closer\'s commission &amp; Fast-Start bonus'+
+    (f.vof_verified_at?' <span class="mut">(verified '+fmt(f.vof_verified_at)+')</span>':'')+'</label>'
+  ):(unverified(f)?'<div class="note">Enrollment recorded — <strong>pending owner verification</strong>. Commission and Fast-Start credit start once it\'s confirmed.</div>':'');
   openDrawer(dh(esc(f.name))+
    intel+
    '<div class="meta" style="margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap">'+
@@ -647,8 +666,15 @@ function openFac(id){
    '<label>Call notes</label><textarea id="o_no" rows="2"></textarea>'+
    '<button class="b go" style="width:100%" onclick="logOutreach(\''+id+'\')">Log Call &amp; Claim Lead</button>'+
    '<h2 class="sec">Outreach History</h2>'+
-   (O.filter(o=>o.facility_id===id).slice(0,8).map(o=>'<div class="mut" style="margin-bottom:5px">'+
-     fmt(o.contacted_at)+' · '+esc(o.channel)+(o.spoke_with?' · '+esc(o.spoke_with):'')+(o.outcome?' — '+esc(o.outcome):'')+'</div>').join('')||'<div class="mut">No touches logged yet.</div>'));
+   '<div id="fhist" data-fid="'+id+'"><div class="mut">Loading…</div></div>');
+  loadFacHistory(id);
+}
+// History is fetched for the open facility only (the app no longer downloads the whole outreach log).
+async function loadFacHistory(id){
+  const {data}=await sb.from('outreach_log').select('contacted_at,channel,spoke_with,outcome').eq('facility_id',id).order('contacted_at',{ascending:false}).limit(8);
+  const el=$('fhist'); if(!el||el.dataset.fid!==id)return;
+  el.innerHTML=(data||[]).map(o=>'<div class="mut" style="margin-bottom:5px">'+
+     fmt(o.contacted_at)+' · '+esc(o.channel)+(o.spoke_with?' · '+esc(o.spoke_with):'')+(o.outcome?' — '+esc(o.outcome):'')+'</div>').join('')||'<div class="mut">No touches logged yet.</div>';
 }
 function sendTermsSms(id){
   const f=fac(id);
@@ -679,26 +705,42 @@ async function saveFac(id){
   }
   if(isOwner()&&['vendor_on_file','client'].includes(newStatus)&&!upd.closed_by&&f.assigned_to)upd.closed_by=f.assigned_to;
   const extUpd=Object.assign({},upd);
+  if(isOwner()&&$('f_vf'))extUpd.vof_verified_at=$('f_vf').checked?(f.vof_verified_at||new Date().toISOString()):null;
   if(isOwner()&&$('f_og'))extUpd.operator_group=$('f_og').value.trim()||null;
-  let {error}=await sb.from('facilities').update(extUpd).eq('id',id);
+  let {data,error}=await sb.from('facilities').update(extUpd).eq('id',id).select();
   if(error){
-    const retry=await sb.from('facilities').update(upd).eq('id',id);
-    error=retry.error;
+    const retry=await sb.from('facilities').update(upd).eq('id',id).select();
+    error=retry.error; data=retry.data;
   }
   if(error){toast(error.message);return}
-  toast('Saved ✓');closeDrawer();refresh();
+  (data||[]).forEach(r=>patch(F,r));
+  toast('Saved ✓');closeDrawer();
+  // Only re-fetch what this save can change elsewhere: enrolling or re-crediting a facility can
+  // credit sister locations (operator group) and moves the commission / bonus views.
+  const credit=newStatus!==f.call_status||(isOwner()&&((upd.closed_by||null)!==(f.closed_by||null)||
+    (extUpd.operator_group||null)!==(f.operator_group||null)||('vof_verified_at' in extUpd&&!!extUpd.vof_verified_at!==!!f.vof_verified_at)));
+  const keys=[];
+  if(credit)keys.push('F');
+  if(isOwner()&&credit)keys.push('COMM','MILE','BAL');
+  else if((upd.contact_name||null)!==(f.contact_name||null)||(upd.current_vendor||null)!==(f.current_vendor||null))keys.push('MILE','BAL');
+  if(keys.length)await reload(...keys);
+  render();
 }
 async function logOutreach(id){
   const f=fac(id);
   const spoke=$('o_sw').value.trim();
-  const {error}=await sb.from('outreach_log').insert({facility_id:id,channel:$('o_ch').value,
-   spoke_with:spoke||null,outcome:$('o_oc').value||null,notes:$('o_no').value||null});
+  const {data:ins,error}=await sb.from('outreach_log').insert({facility_id:id,channel:$('o_ch').value,
+   spoke_with:spoke||null,outcome:$('o_oc').value||null,notes:$('o_no').value||null}).select('id,facility_id,rep_id,contacted_at');
   if(error){toast(error.message);return}
+  (ins||[]).forEach(r=>O7.unshift(r)); O_TOTAL+=(ins||[]).length;
   const fUpd={};
   if(spoke&&['not_called','no_answer'].includes($('f_cs').value))fUpd.call_status='spoke';
   if(!isOwner()&&!f.assigned_to)fUpd.assigned_to=me.uid;
-  if(Object.keys(fUpd).length)await sb.from('facilities').update(fUpd).eq('id',id);
-  toast('Call logged ✓');closeDrawer();refresh();
+  if(Object.keys(fUpd).length){
+    const {data}=await sb.from('facilities').update(fUpd).eq('id',id).select();
+    (data||[]).forEach(r=>patch(F,r));
+  }
+  toast('Call logged ✓');closeDrawer();render();
 }
 function openNewJob(fid){
   const fPool=isOwner()?F:myLeads();
@@ -724,28 +766,27 @@ async function createJob(){
   const row={facility_id:fid,equipment_kind:$('j_k').value,issue:$('j_i').value.trim(),
    status:'requested',coordination_fee_usd:parseFloat($('j_fee').value)||FEE,assigned_to:me.uid};
   if($('j_t')&&$('j_t').value)row.tech_id=$('j_t').value;
-  const {error}=await sb.from('dispatches').insert(row);
+  const {data:ins,error}=await sb.from('dispatches').insert(row).select();
   if(error){toast(error.message);return}
+  (ins||[]).forEach(r=>patch(D,r));
   if(!isOwner()){
     const fUpd={call_status:'client'};
     if(!f.assigned_to)fUpd.assigned_to=me.uid;
     if(!f.closed_by)fUpd.closed_by=me.uid;
     await sb.from('facilities').update(fUpd).eq('id',fid);
+    await reload('F');   // becoming a client can credit sister locations too
   }
-  toast('Dispatch created ✓');closeDrawer();refresh();
+  toast('Dispatch created ✓');closeDrawer();render();
 }
 function openJob(id){
   const d=D.find(x=>x.id===id); if(!d)return;
   const f=fac(d.facility_id);
   const owner=isOwner();
   const nxt=owner?{requested:'dispatched',dispatched:'on_site',on_site:'completed'}[d.status]:null;
-  const invUrl='docs.html?doc=d3&facility='+encodeURIComponent(f.name||'')+'&city='+encodeURIComponent(f.city||'')+
-    '&equip='+encodeURIComponent(d.equipment_kind||'')+'&issue='+encodeURIComponent(d.issue||'')+
-    '&fee='+encodeURIComponent((+d.coordination_fee_usd||FEE).toFixed(2))+'&wo='+encodeURIComponent('TGD-'+String(d.id).slice(0,6).toUpperCase());
   openDrawer(dh(esc(f.name||'Job'))+
    '<div class="meta" style="margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="st '+esc(d.status)+'">'+esc(d.status.replace('_',' '))+'</span> · '+
    esc(d.equipment_kind)+' · fee $'+(+d.coordination_fee_usd||0).toFixed(0)+(d.fee_collected?' <span class="ok">(collected ✓)</span>':'')+
-   '<a class="b sm" style="margin-left:auto" target="_blank" href="'+invUrl+'">📄 Invoice (DOC 03) ↗</a></div>'+
+   '<button class="b sm" style="margin-left:auto" onclick="openInvoice(\''+id+'\')">📄 Invoice (DOC 03) ↗</button></div>'+
    (d.issue?'<div class="mut" style="margin-bottom:8px">'+esc(d.issue)+'</div>':'')+
    (owner?('<label>Tech</label><select id="jd_t"><option value="">— unassigned —</option>'+
    T.filter(t=>t.is_active||t.id===d.tech_id).map(t=>'<option value="'+t.id+'" '+(t.id===d.tech_id?'selected':'')+'>'+esc(t.name)+'</option>').join('')+'</select>'):'')+
@@ -762,6 +803,19 @@ function openJob(id){
    (owner&&!['approved','cancelled'].includes(d.status)?'<button class="b warn" onclick="advJob(\''+id+'\',\'cancelled\')">Cancel</button>':'')+
    '</div>');
 }
+function openInvoice(id){
+  const d=D.find(x=>x.id===id); if(!d)return;
+  const f=fac(d.facility_id);
+  try{localStorage.setItem('dhq_invoice',JSON.stringify({ts:Date.now(),facility:f.name||'',city:f.city||'',equip:d.equipment_kind||'',
+    issue:d.issue||'',fee:(+d.coordination_fee_usd||FEE).toFixed(2),wo:'TGD-'+String(d.id).slice(0,6).toUpperCase()}))}catch(e){}
+  window.open('docs.html?doc=d3','_blank');
+}
+// After a dispatch write: swap the returned row in, and refresh the commission views only when money moved.
+async function jobSaved(data,money){
+  (data||[]).forEach(r=>patch(D,r));
+  if(isOwner()&&money)await reload('COMM','BAL');
+  render();
+}
 async function saveJob(id){
   const upd={notes:$('jd_no').value||null};
   if($('jd_t'))upd.tech_id=$('jd_t').value||null;
@@ -769,18 +823,19 @@ async function saveJob(id){
   if($('jd_ot'))upd.on_time=$('jd_ot').checked;
   if($('jd_ft'))upd.first_try_approval=$('jd_ft').checked;
   if($('jd_fc'))upd.fee_collected=$('jd_fc').checked;
-  const {error}=await sb.from('dispatches').update(upd).eq('id',id);
+  const before=D.find(x=>x.id===id)||{};
+  const {data,error}=await sb.from('dispatches').update(upd).eq('id',id).select();
   if(error){toast(error.message);return}
-  toast('Saved ✓');closeDrawer();refresh();
+  toast('Saved ✓');closeDrawer();await jobSaved(data,'fee_collected' in upd&&upd.fee_collected!==before.fee_collected);
 }
 async function advJob(id,st){
   const upd={status:st};
   if(st==='dispatched')upd.dispatched_at=new Date().toISOString();
   if(st==='completed')upd.completed_at=new Date().toISOString();
   if($('jd_fc')&&$('jd_fc').checked)upd.fee_collected=true;
-  const {error}=await sb.from('dispatches').update(upd).eq('id',id);
+  const {data,error}=await sb.from('dispatches').update(upd).eq('id',id).select();
   if(error){toast(error.message);return}
-  toast(st.replace('_',' ')+' ✓');closeDrawer();refresh();
+  toast(st.replace('_',' ')+' ✓');closeDrawer();await jobSaved(data,true);
 }
 function openTech(id){
   if(!isOwner())return;
@@ -814,9 +869,10 @@ async function saveTech(id){
    trades,coi_expires_on:$('t_coi').value||null,dps_license_number:$('t_dps').value.trim()||null,
    dps_license_expires_on:$('t_dpx').value||null,tops_verified_on:$('t_tv').value||null,
    agreement_signed_on:$('t_ag').value||null,is_active:$('t_act').checked,notes:$('t_no').value||null};
-  const {error}=id?await sb.from('techs').update(row).eq('id',id):await sb.from('techs').insert(row);
+  const {data,error}=id?await sb.from('techs').update(row).eq('id',id).select():await sb.from('techs').insert(row).select();
   if(error){toast(error.message);return}
-  toast(id?'Saved ✓':'Tech hired ✓');closeDrawer();refresh();
+  (data||[]).forEach(r=>patch(T,r));
+  toast(id?'Saved ✓':'Tech hired ✓');closeDrawer();await reload('READY');render();
 }
 async function dealLeads(uid,count){
   if(!isOwner())return;
@@ -826,10 +882,11 @@ async function dealLeads(uid,count){
     .sort((a,b)=>PRI_ORD[a.priority]-PRI_ORD[b.priority]).slice(0,count);
   if(!pool.length){toast('No unassigned leads left in queue');return}
   const ids=pool.map(f=>f.id);
-  const {error}=await sb.from('facilities').update({assigned_to:uid}).in('id',ids);
+  const {data,error}=await sb.from('facilities').update({assigned_to:uid}).in('id',ids).select();
   if(error){toast(error.message);return}
+  (data||[]).forEach(r=>patch(F,r));
   toast('Assigned '+ids.length+' leads to '+repName(uid)+' ✓');
-  await refresh();
+  render();
 }
 async function reclaimLeads(uid){
   if(!isOwner())return;
@@ -838,21 +895,32 @@ async function reclaimLeads(uid){
   const st=STAFF.find(x=>x.user_id===uid);
   if(st&&st.last_active_at&&(Date.now()-new Date(st.last_active_at))<72*36e5&&
      !confirm(repName(uid)+' logged a call in the last 72 hours. Reclaim their '+stale.length+' uncalled leads anyway?'))return;
-  const {error}=await sb.from('facilities').update({assigned_to:null}).in('id',stale);
-  if(error){toast(error.message);return}
+  // In batches, so a large reclaim doesn't overflow the request URL.
+  for(let i=0;i<stale.length;i+=100){
+    const {data,error}=await sb.from('facilities').update({assigned_to:null}).in('id',stale.slice(i,i+100)).select();
+    if(error){toast(error.message);render();return}
+    (data||[]).forEach(r=>patch(F,r));
+  }
   toast('Reclaimed '+stale.length+' uncalled leads ✓');
-  await refresh();
+  render();
 }
-async function setRole(uid,role){const {error}=await sb.from('dispatch_staff').update({role}).eq('user_id',uid);
-  if(error){toast(error.message);return} toast('Updated ✓');await loadAll();render()}
-async function setScope(uid,scope){const {error}=await sb.from('dispatch_staff').update({jobs_scope:scope}).eq('user_id',uid);
-  if(error){toast(error.message);return} toast('Updated ✓');await loadAll();render()}
+async function staffUpdate(uid,fields){
+  const {data,error}=await sb.from('dispatch_staff').update(fields).eq('user_id',uid).select();
+  if(error){toast(error.message);return false}
+  (data||[]).forEach(r=>patch(STAFF,r,'user_id'));
+  return true;
+}
+async function setRole(uid,role){if(await staffUpdate(uid,{role})){toast('Updated ✓');render()}}
+async function setScope(uid,scope){if(await staffUpdate(uid,{jobs_scope:scope})){toast('Updated ✓');render()}}
 async function dropStaff(uid){if(!confirm('Remove this person\'s access?'))return;
   const {error}=await sb.from('dispatch_staff').delete().eq('user_id',uid);
-  if(error){toast(error.message);return} toast('Removed');await loadAll();render()}
+  if(error){toast(error.message);return}
+  STAFF=STAFF.filter(x=>x.user_id!==uid);toast('Removed');render()}
 async function saveFee(){
-  const pairs=[['booking_fee_usd',$('feeIn').value],['emergency_fee_usd',$('feeRushIn').value],['payment_instructions',$('payLinkIn').value]];
+  const cap=Math.floor(parseFloat($('sweepCapIn').value));
+  const pairs=[['booking_fee_usd',$('feeIn').value],['emergency_fee_usd',$('feeRushIn').value],['payment_instructions',$('payLinkIn').value],['sweep_monthly_call_cap',String(cap)]];
   if(!(parseFloat(pairs[0][1])>=0)||!(parseFloat(pairs[1][1])>=0)){toast('Enter both fees as dollar amounts');return}
+  if(!(cap>=0)){toast('Enter the monthly call cap as a number');return}
   for(const [k,v] of pairs){
     const {error}=await sb.from('app_settings').upsert({key:k,value:String(v)},{onConflict:'key'});
     if(error){toast(error.message);return}
@@ -875,6 +943,7 @@ async function saveComm(){
     if(error){toast(error.message);return}
     SET[k]=String(v);
   }
+  await reload('COMM','MILE','BAL');
   toast('Commission plan saved ✓');
 }
 

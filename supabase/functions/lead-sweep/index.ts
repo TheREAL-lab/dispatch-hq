@@ -1,11 +1,12 @@
 // lead-sweep — owner-only Google Maps sweep for DFW self-storage leads.
 // Called from Radar (radar.html → Leads → Run Sweep) via supabase.functions.invoke.
-// Requires the GOOGLE_MAPS_API_KEY Edge Function secret (Places API (New) enabled).
+// Google key: the GOOGLE_MAPS_API_KEY Edge Function secret, or the Vault secret
+// `google_maps_api_key` read with the service role (never exposed to the browser).
 //
 // Body: { cities?: string[], dry_run?: boolean, max_calls?: number }
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { clampMaxCalls, nameCityKey, normPhone, processPlaces, resolveCities, searchCities } from "./sweep.ts";
+import { clampMaxCalls, fetchAllRows, monthlyBudget, nameCityKey, normPhone, processPlaces, resolveCities, searchCities } from "./sweep.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -32,10 +33,12 @@ Deno.serve(async (req) => {
   const { data: isOwner } = await sb.rpc("dhq_is_owner");
   if (!isOwner) return json(403, { error: "Only the owner can run a lead sweep." });
 
-  // Edge Function secret first; otherwise the owner-only Vault secret `google_maps_api_key`.
+  // Edge Function secret first; otherwise the Vault secret `google_maps_api_key`. The caller is a
+  // verified owner at this point; the key itself is only readable with the service role.
   let apiKey = Deno.env.get("GOOGLE_MAPS_API_KEY") || "";
   if (!apiKey) {
-    const { data: vaultKey } = await sb.rpc("dhq_google_maps_key");
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+    const { data: vaultKey } = await admin.rpc("dhq_google_maps_key");
     apiKey = typeof vaultKey === "string" ? vaultKey : "";
   }
   if (!apiKey) {
@@ -51,7 +54,23 @@ Deno.serve(async (req) => {
   let cities;
   try { cities = resolveCities(body.cities); } catch (e) { return json(400, { error: (e as Error).message }); }
   const dryRun = !!body.dry_run;
-  const maxCalls = clampMaxCalls(body.max_calls);
+
+  // Spend guards: one sweep at a time, and a monthly cap on Google calls
+  // (app_settings.sweep_monthly_call_cap, default 1000; dry runs count too).
+  const monthStart = new Date(); monthStart.setUTCDate(1); monthStart.setUTCHours(0, 0, 0, 0);
+  const [running, month, capRow] = await Promise.all([
+    sb.from("lead_sweeps").select("id").is("finished_at", null).gte("started_at", new Date(Date.now() - 5 * 60_000).toISOString()).limit(1),
+    sb.from("lead_sweeps").select("api_calls").gte("started_at", monthStart.toISOString()),
+    sb.from("app_settings").select("value").eq("key", "sweep_monthly_call_cap").maybeSingle(),
+  ]);
+  if (running.error || month.error) return json(500, { error: (running.error || month.error)!.message });
+  if (running.data?.length) return json(409, { error: "A sweep is already running. Wait for it to finish, then try again." });
+  const usedThisMonth = (month.data || []).reduce((n: number, r: any) => n + (r.api_calls || 0), 0);
+  const budget = monthlyBudget(clampMaxCalls(body.max_calls), usedThisMonth, capRow.data?.value);
+  if (budget.allowed < 1) {
+    return json(429, { error: `Monthly Google call cap reached (${budget.used} of ${budget.monthlyCap}). Raise it in Settings or wait until next month.`, code: "monthly_cap" });
+  }
+  const maxCalls = budget.allowed;
 
   const { data: logRow } = await sb.from("lead_sweeps")
     .insert({ cities: cities.map((c) => c.name), dry_run: dryRun }).select("id").single();
@@ -60,20 +79,20 @@ Deno.serve(async (req) => {
   };
 
   try {
+    // Paged, so dedupe stays correct past PostgREST's 1000-row page size.
     const [bl, lc, fac] = await Promise.all([
-      sb.from("lead_chain_blocklist").select("pattern"),
-      sb.from("lead_candidates").select("place_id"),
-      sb.from("facilities").select("place_id, phone, name, city"),
+      fetchAllRows<any>((a, b) => sb.from("lead_chain_blocklist").select("pattern").order("id").range(a, b)),
+      fetchAllRows<any>((a, b) => sb.from("lead_candidates").select("place_id").order("id").range(a, b)),
+      fetchAllRows<any>((a, b) => sb.from("facilities").select("place_id, phone, name, city").order("id").range(a, b)),
     ]);
-    for (const r of [bl, lc, fac]) if (r.error) throw new Error(r.error.message);
     const existing = {
-      placeIds: new Set<string>([...(lc.data || []), ...(fac.data || [])].map((r: any) => r.place_id).filter(Boolean)),
-      phones: new Set<string>((fac.data || []).map((r: any) => normPhone(r.phone)).filter(Boolean)),
-      nameCity: new Set<string>((fac.data || []).map((r: any) => nameCityKey(r.name, r.city))),
+      placeIds: new Set<string>([...lc, ...fac].map((r: any) => r.place_id).filter(Boolean)),
+      phones: new Set<string>(fac.map((r: any) => normPhone(r.phone)).filter(Boolean)),
+      nameCity: new Set<string>(fac.map((r: any) => nameCityKey(r.name, r.city))),
     };
 
     const search = await searchCities({ apiKey, cities, maxCalls, fetchFn: fetch as any });
-    const { candidates, skipped, found } = processPlaces(search.places, (bl.data || []).map((r: any) => r.pattern), existing);
+    const { candidates, skipped, found } = processPlaces(search.places, bl.map((r: any) => r.pattern), existing);
 
     let inserted = 0;
     if (!dryRun && candidates.length) {
@@ -89,6 +108,8 @@ Deno.serve(async (req) => {
       cities: cities.length,
       api_calls: search.apiCalls,
       hit_call_cap: search.apiCalls >= maxCalls,
+      monthly_calls_used: budget.used + search.apiCalls,
+      monthly_call_cap: budget.monthlyCap,
       found,
       new_candidates: candidates.length,
       inserted,
