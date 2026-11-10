@@ -1,5 +1,5 @@
 -- Dispatch HQ — security hardening from the Nov 2026 audit
--- NOT YET APPLIED to the live project. Review, then apply as `security_hardening`.
+-- Applied to the live project as `security_hardening`.
 -- Idempotent: safe to re-run.
 --
 --  1. dispatch_staff: self-signup rows can no longer pre-set privileged/onboarding fields

@@ -1,5 +1,6 @@
 -- Dispatch HQ — audit follow-ups (Nov 2026)
--- Apply after 20261110_security_hardening.sql, as `audit_followups`. Idempotent: safe to re-run.
+-- Applied to the live project as `audit_followups` (after 20261110_security_hardening.sql).
+-- Idempotent: safe to re-run.
 --
 --  1. Enrollment verification: commissions and the VOF bonus only count facilities the
 --     owner has verified (facilities.vof_verified_at)
