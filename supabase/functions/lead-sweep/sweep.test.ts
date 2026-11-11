@@ -1,7 +1,7 @@
 // Run: node --test supabase/functions/lead-sweep/sweep.test.ts   (Node 22.18+)
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { brandKey, findPain, processPlaces, resolveCities, searchCities, type Place } from "./sweep.ts";
+import { brandKey, clampMaxCalls, fetchAllRows, findPain, monthlyBudget, processPlaces, resolveCities, searchCities, type Place } from "./sweep.ts";
 
 const NOW = new Date("2026-11-01T12:00:00Z");
 const daysAgo = (d: number) => new Date(NOW.getTime() - d * 864e5).toISOString();
@@ -126,4 +126,47 @@ test("a rejected key stops the whole sweep after the first failure", async () =>
 
 test("unknown city names are rejected with the known list", () => {
   assert.throws(() => resolveCities(["Atlantis"]), /Unknown city "Atlantis"/);
+});
+
+test("max_calls is clamped to 1..300 and never becomes NaN", () => {
+  assert.equal(clampMaxCalls(undefined), 150);
+  assert.equal(clampMaxCalls(null), 150);
+  assert.equal(clampMaxCalls("abc"), 150);
+  assert.equal(clampMaxCalls({}), 150);
+  assert.equal(clampMaxCalls(NaN), 150);
+  assert.equal(clampMaxCalls("40"), 40);
+  assert.equal(clampMaxCalls(12.9), 12);
+  assert.equal(clampMaxCalls(0), 1);
+  assert.equal(clampMaxCalls(-5), 1);
+  assert.equal(clampMaxCalls(1e9), 300);
+  assert.equal(clampMaxCalls(Infinity), 150);
+});
+
+test("cities must be a list of strings", () => {
+  assert.throws(() => resolveCities("Plano"), /list of city names/);
+  assert.throws(() => resolveCities([42]), /list of city names/);
+  assert.equal(resolveCities(null).length, resolveCities().length);
+  assert.equal(resolveCities([" plano "])[0].name, "Plano");
+});
+
+test("monthly budget caps a run at what is left this month", () => {
+  assert.deepEqual(monthlyBudget(150, 0, "1000"), { monthlyCap: 1000, used: 0, remaining: 1000, allowed: 150 });
+  assert.equal(monthlyBudget(150, 900, "1000").allowed, 100);
+  assert.equal(monthlyBudget(150, 1000, "1000").allowed, 0);
+  assert.equal(monthlyBudget(150, 5000, 1000).allowed, 0);
+  assert.equal(monthlyBudget(150, 0, undefined).monthlyCap, 1000);
+  assert.equal(monthlyBudget(150, 0, "abc").monthlyCap, 1000);
+  assert.equal(monthlyBudget(150, 0, "-5").monthlyCap, 1000);
+  assert.equal(monthlyBudget(150, NaN, "200").allowed, 150);
+  assert.equal(monthlyBudget(150, 0, "0").allowed, 0);
+});
+
+test("fetchAllRows pages until a short page and surfaces errors", async () => {
+  const all = Array.from({ length: 2500 }, (_, i) => i);
+  const ranges: number[][] = [];
+  const rows = await fetchAllRows<number>(async (from, to) => { ranges.push([from, to]); return { data: all.slice(from, to + 1), error: null }; });
+  assert.equal(rows.length, 2500);
+  assert.deepEqual(ranges, [[0, 999], [1000, 1999], [2000, 2999]]);
+  assert.equal((await fetchAllRows<number>(async () => ({ data: null, error: null }))).length, 0);
+  await assert.rejects(fetchAllRows<number>(async () => ({ data: null, error: { message: "boom" } })), /boom/);
 });

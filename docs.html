@@ -343,7 +343,7 @@
         <li><strong>Trailing commission:</strong> <span class="fill">[20]</span>% of each coordination fee <strong>actually collected</strong> by Company from that facility for dispatches requested within <span class="fill">[12]</span> months after the enrollment/close date (including on both the initial dispatch and all repeat dispatches during the 12-month window).</li>
         <li><strong>Multi-Property Operator Multiplier:</strong> If Representative closes a regional manager or operator group overseeing multiple self-storage locations, each individual facility location enrolled under that operator is credited to Representative and qualifies separately for both the Account Bounty in Section 3(1) and the 12-month Trailing Commission in Section 3(2).</li>
       </ol>
-      <p>A facility is “closed by Representative” when it is recorded as an enrolled vendor-on-file (`vendor_on_file`) or active client (`client`) in Company’s system with Representative credited as the closer. Commissions accrue only on coordination fees actually collected (not on technician repair charges, which never pass through Company), and are reduced or reversed for refunds or uncollected invoices. No commission is owed on facilities with a documented pre-existing relationship with Company. Commissions are paid monthly, by the 10th, for the prior calendar month, with a statement of the underlying dispatches.</p>
+      <p>A facility is “closed by Representative” when it is recorded as an enrolled vendor-on-file (`vendor_on_file`) or active client (`client`) in Company’s system with Representative credited as the closer. Enrollment credit counts toward any account bounty, trailing commission or milestone bonus only once Company has verified the enrollment (decision-maker and current vendor on record) and marked it verified in Company’s system; Company will not unreasonably withhold or delay verification. Commissions accrue only on coordination fees actually collected (not on technician repair charges, which never pass through Company), and are reduced or reversed for refunds or uncollected invoices. No commission is owed on facilities with a documented pre-existing relationship with Company. Commissions are paid monthly, by the 10th, for the prior calendar month, with a statement of the underlying dispatches.</p>
 
       <h3>4. Post-Termination Trail</h3>
       <p>Either party may end this Agreement at any time with written notice (email suffices). For facilities closed by Representative before termination, the trailing commission in Section 3(2) continues to accrue and be paid for the remainder of each facility’s commission window, on fees actually collected. This survives termination.</p>
@@ -408,27 +408,27 @@
     });
   }
 
-  (function prefillFromQuery(){
+  // Invoice details are handed over by Dispatch HQ through same-origin storage (index.html → Invoice),
+  // never read from the URL, so a crafted link can't render an official-looking invoice.
+  (function prefillInvoice(){
     var q = new URLSearchParams(location.search);
     var today = new Date().toLocaleDateString('en-US', {year:'numeric', month:'short', day:'numeric'});
-    if(q.get('facility')) document.getElementById('inv-fac').textContent = q.get('facility');
-    if(q.get('city')) document.getElementById('inv-addr').textContent = q.get('city') + ', TX';
-    if(q.get('wo')){
-      document.getElementById('inv-wo').textContent = q.get('wo');
-      document.getElementById('inv-no').textContent = q.get('wo');
-    }
-    var equip = q.get('equip') || '';
-    var issue = q.get('issue') || '';
-    if(equip || issue){
-      document.getElementById('inv-desc').textContent = equip + (issue ? ' (' + issue + ')' : '');
-    }
-    if(q.get('fee')){
-      var amt = '$' + parseFloat(q.get('fee')).toFixed(2);
-      document.getElementById('inv-amt').textContent = amt;
-      document.getElementById('inv-tot').textContent = amt;
+    var inv = null;
+    try {
+      inv = JSON.parse(localStorage.getItem('dhq_invoice') || 'null');
+      if (!inv || typeof inv !== 'object' || !(Date.now() - inv.ts < 15 * 60 * 1000)) inv = null;
+    } catch (e) { inv = null; }
+    var set = function(id, v){ document.getElementById(id).textContent = v; };
+    if (inv && q.get('doc') === 'd3') {
+      if (inv.facility) set('inv-fac', String(inv.facility));
+      if (inv.city) set('inv-addr', String(inv.city) + ', TX');
+      if (inv.wo) { set('inv-wo', String(inv.wo)); set('inv-no', String(inv.wo)); }
+      if (inv.equip || inv.issue) set('inv-desc', String(inv.equip || '') + (inv.issue ? ' (' + inv.issue + ')' : ''));
+      var fee = parseFloat(inv.fee);
+      if (fee >= 0) { set('inv-amt', '$' + fee.toFixed(2)); set('inv-tot', '$' + fee.toFixed(2)); }
     }
     document.getElementById('inv-date').textContent = today;
-    document.getElementById('inv-dispdate').textContent = q.get('date') || today;
+    document.getElementById('inv-dispdate').textContent = today;
     var doc = q.get('doc');
     if(doc && document.getElementById('wrap-' + doc)){
       setTimeout(function(){
